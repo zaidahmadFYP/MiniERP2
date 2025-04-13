@@ -1,5 +1,3 @@
-// src/Component/MainContent/MainContent.jsx
-
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
@@ -12,15 +10,16 @@ import {
 import { useNavigate } from 'react-router-dom';
 import Banner from '../BannerComponent/BannerComponent';
 import TilesGrid from '../TileGrid/TileGrid';
-import TabsComponent from '../TabComponent/TabComponent'; // Ensure correct path
+import TabsComponent from '../TabComponent/TabComponent';
 import AnnouncementForm from './AnnouncementForm';
 import TaskForm from './TaskForm';
+import CalendarComponent from './CalendarComponent';
 import RetailCommerce from '../../pages/RetailCommerce/RetailCommerce';
 
 const MainContent = ({ user }) => {
   const theme = useTheme();
   const navigate = useNavigate();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // Detect mobile devices
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const headingColor = theme.palette.mode === 'dark' ? '#f15a22' : '#000000';
   const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState(false);
@@ -33,7 +32,6 @@ const MainContent = ({ user }) => {
       { name: 'Finance and Sales', image: '/images/vehicle.webp' },
       { name: 'Inventory Management', image: '/images/vehicle.webp' },
       { name: 'Reports and Analytics', image: '/images/vehicle.webp' },
-      // Add User Management tile
       { name: 'User Management', image: '/images/user_management.webp' },
     ];
     return allTiles.filter((tile) =>
@@ -65,7 +63,7 @@ const MainContent = ({ user }) => {
       component="main"
       sx={{
         flexGrow: 1,
-        p: isMobile ? 2 : 4, // Reduced padding on mobile
+        p: isMobile ? 2 : 4,
         marginLeft: isMobile ? 0 : 1,
         transition: 'margin-left 0.1s',
         overflowY: 'auto',
@@ -117,44 +115,10 @@ const MainContent = ({ user }) => {
                 mb: 2,
                 ml: isMobile ? 0 : 10,
                 maxWidth: '100%',
-                gap: isMobile ? 1 : 0, // Add gap between buttons on mobile
+                gap: isMobile ? 1 : 0,
               }}
             >
-              {/* <Button
-                variant="contained"
-                className="expanding-button"
-                sx={{
-                  width: isMobile ? '100%' : '48%',
-                  backgroundColor: '#f15a22',
-                  height: '47px',
-                  borderRadius: '12px',
-                  transition: 'transform 0.3s ease, width 0.3s ease, height 0.3s ease',
-                  '&:hover': {
-                    backgroundColor: '#d14e1f',
-                    transform: 'scale(1.05)',
-                  },
-                }}
-                onClick={() => setShowAnnouncementForm(true)}
-              >
-                Add Announcement
-              </Button>
-              <Button
-                variant="contained"
-                sx={{
-                  width: isMobile ? '100%' : '48%',
-                  backgroundColor: '#f15a22',
-                  borderRadius: '12px',
-                  height: '47px',
-                  transition: 'transform 0.3s ease, width 0.3s ease, height 0.3s ease',
-                  '&:hover': {
-                    backgroundColor: '#d14e1f',
-                    transform: 'scale(1.05)',
-                  },
-                }}
-                onClick={() => setShowTaskForm(true)}
-              >
-                Add Task
-              </Button> */}
+              {/* Admin buttons */}
             </Box>
           )}
 
@@ -178,13 +142,7 @@ const MainContent = ({ user }) => {
               },
             }}
           >
-            {/* <TabsComponent
-              latestAnnouncement={latestAnnouncement}
-              userId={user?._id?.toString()}
-              userZone={user?.zone}
-              userBranch={user?.branch}
-              userEmail={user?.email}
-            /> */}
+            <CalendarComponent isMobile={isMobile} />
           </Box>
         </Grid>
       </Grid>
