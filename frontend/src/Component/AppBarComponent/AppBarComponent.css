@@ -1,0 +1,30 @@
+.scale-up {
+  animation: scaleUp 0.5s forwards;
+}
+
+.fade-rotate {
+  animation: fadeRotate 0.5s forwards;
+}
+
+.jump {
+  animation: jump 0.5s;
+}
+
+/* .highlighted {
+  box-shadow: 0 0 10px yellow;
+} */
+
+@keyframes scaleUp {
+  from { transform: scale(1); }
+  to { transform: scale(1.2); }
+}
+
+@keyframes fadeRotate {
+  from { opacity: 1; transform: rotate(0deg); }
+  to { opacity: 0.5; transform: rotate(360deg); }
+}
+
+@keyframes jump {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}

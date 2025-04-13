@@ -1,0 +1,24 @@
+@keyframes expandButtonToPaper {
+    0% {
+      width: 48%;
+      height: auto;
+      transform: scale(1);
+    }
+    100% {
+      width: 400px;
+      height: auto;
+      transform: translate(-50%, -50%) scale(1.1);
+    }
+  }
+  
+  .expanding-button {
+    animation: expandButtonToPaper 0.3s forwards;
+  }
+  
+  .expanded-paper {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+  

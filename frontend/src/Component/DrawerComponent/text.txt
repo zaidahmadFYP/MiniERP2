@@ -1,0 +1,77 @@
+const items = [
+    {
+      text: 'Licenses',
+      icon: '/images/licenses.webp',
+      path: '/Licenses/Licensepage',
+      submenu: [
+        { text: 'Trade Licenses', path: '/Licenses/Licensepage' },
+        { text: 'Staff Medicals', path: '/Licenses/Licensepage' },
+        { text: 'Tourism Licenses', path: '/Licenses/Licensepage' },
+        { text: 'Labour Licenses', path: '/Licenses/Licensepage' },
+      ],
+    },
+    {
+      text: 'Approvals',
+      icon: '/images/approved.webp',
+      path: '/Approval/Approvalpage',
+      submenu: [{ text: 'Outer Spaces', path: '/Approval/Approvalpage' }],
+    },
+    {
+      text: 'Vehicles',
+      icon: '/images/vehicle.webp',
+      path: '/Vehicles/Vehiclepage',
+      submenu: [
+        { text: 'Maintenance', path: '/Vehicles/Vehiclepage' },
+        { text: 'Token Taxes', path: '/Vehicles/Vehiclepage' },
+        { text: 'Route Permits', path: '/Vehicles/Vehiclepage' },
+      ],
+    },
+    {
+      text: 'Health Safety Environment',
+      icon: '/images/hse.webp',
+      path: '/Hse/Hse',
+      submenu: [
+        { text: 'Monthly Inspection', path: '/Hse/MonthlyInspection' },
+        { text: 'Quarterly Audit', path: '/Hse/QuarterlyAudit' },
+        { text: 'Expiry of Cylinders', path: '/Hse/ExpiryofCylinders' },
+        { text: 'Training Status', path: '/Hse/Hse/training' },
+        { text: 'Incidents', path: '/Hse/Hse/incidents' },
+      ],
+    },
+    {
+      text: 'Taxation',
+      icon: '/images/taxation.webp',
+      path: '/Taxation/Taxationpage',
+      submenu: [
+        { text: 'Marketing / Bill Boards Taxes', path: '/Taxation/Taxationpage' },
+        { text: 'Profession Tax', path: '/Taxation/Taxationpage' },
+      ],
+    },
+    {
+      text: 'Certificates',
+      icon: '/images/certificate.webp',
+      path: '/Certificate/Certificatepage',
+      submenu: [{ text: 'Electric Fitness Test', path: '/Certificate/ElectricFitnessTest' }],
+    },
+    {
+      text: 'Security',
+      icon: '/images/security.webp',
+      path: '/Security/GuardTraining',
+    },
+    {
+      text: 'Admin Policies and SOPs',
+      icon: '/images/admin_icon.webp',
+      path: '/AdminPolicies',
+    },
+    {
+      text: 'Rental Agreements',
+      icon: '/images/rental_agreements.webp',
+      path: '/RentalAgreements',
+    },
+    {
+      text: 'User Management',
+      icon: '/images/user_management.webp',
+      path: '/UserManagement',
+    },
+    { text: 'User Tickets', icon: '/images/user_icon.webp', path: '/UserRequests' },
+  ];
