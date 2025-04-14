@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { useTheme } from '@mui/material/styles';
-import Sidebar from './Sidebar';
-import Adjuster from './Adjuster';
 import TransactionTable from './TransactionTable';
 import MainContentWrapper from './MainContentWrapper';
 import { Card, CardContent, Typography, Grid } from '@mui/material';
@@ -22,14 +20,6 @@ const StoreTransaction = ({ open, user }) => {
 
   return (
     <MainContentWrapper open={open}>
-      {/* Sidebar */}
-      {/* <Sidebar user={user} /> */}
-
-      {/* Adjuster */}
-      {/* <Adjuster onResize={handleResize} /> */}
-
-    
-
       <TransactionTable transactions={transactions} tableWidth={tableWidth} />
     </MainContentWrapper>
   );

@@ -98,23 +98,7 @@ const ProfileMenu = ({ anchorEl, isOpen, onClose, user, darkMode }) => {
             </span>
           </Typography>
         </Box>
-        <Box sx={{ padding: 0, display: 'flex', alignItems: 'center' }}>
-          <LocationOnIcon
-            fontSize="small"
-            sx={{ mr: 1, color: darkMode ? '#f15a22' : '#f15a22' }}
-          />
-          <Typography
-            variant="body2"
-            sx={{ fontWeight: 'bold', color: darkMode ? '#ffffff' : '#000' }}
-          >
-            Branch:{' '}
-            <span
-              style={{ fontWeight: 'bold', color: darkMode ? '#ffffff' : '#000' }}
-            >
-              {user.branch || 'N/A'}
-            </span>
-          </Typography>
-        </Box>
+       
       </Box>
 
       {/* Divider and Centered Logout Button */}

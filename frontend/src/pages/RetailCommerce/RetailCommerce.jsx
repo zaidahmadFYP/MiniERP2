@@ -19,7 +19,16 @@ const MainContent = styled(Box)(({ theme }) => ({
 
 const RetailCommerce = () => {
   const theme = useTheme(); 
-  const headingColor = theme.palette.mode === 'dark' ? '#f15a22' : '#000000';
+  const isMobile = window.innerWidth < 600; // Simple mobile check for ml prop
+
+  // Function to get responsive font size (as per remembered MainContent)
+  const getFontSize = () => {
+    const windowWidth = window.innerWidth;
+    if (windowWidth < 600) return '1.1rem'; // xs
+    if (windowWidth < 960) return '1.25rem'; // sm
+    if (windowWidth <= 1366) return '1.4rem'; // md-compact
+    return '1.5rem'; // md
+  };
 
   return (
     <MainContent>
@@ -39,14 +48,30 @@ const RetailCommerce = () => {
       <Typography
         variant="h4"
         sx={{
-          color: headingColor,
-          mb: 4,
-          textAlign: 'left',
-          ml: { xs: -2, sm: 6 }, // Left margin: smaller on mobile
-          fontSize: { xs: '26px', sm: '30px' }, // Responsive font size
-          fontFamily: 'TanseekModernW20, Arial, sans-serif',
+          color: '#f15a22', // Orange color
+          mt: 1, // Margin-top
+          mb: 6, // Margin-bottom
+          textAlign: 'left', // Align text to the left
+          ml: isMobile ? 2 : 6, // Left margin based on screen size
+          fontSize: getFontSize(), // Dynamic font size
+          fontFamily: 'TanseekModernPro-Bold, Arial, sans-serif', // Font family
+          fontWeight: 'bold', // Bold font weight
+          letterSpacing: '1px', // Letter spacing
+          textTransform: 'uppercase', // Uppercase text
+          display: 'flex',
+          alignItems: 'center',
+          borderBottom: '2px solid #333333', // Bottom border
+          paddingBottom: '6px', // Padding below text
         }}
       >
+        <Box
+          sx={{
+            height: '25px',
+            width: '3px',
+            backgroundColor: '#f15a22',
+            marginRight: '4px',
+          }}
+        />
         Retail and Commerce
       </Typography>
 

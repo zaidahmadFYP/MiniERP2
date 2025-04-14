@@ -167,7 +167,7 @@ const MainContent = ({ user }) => {
             height: "25px",
             width: "3px",
             backgroundColor: "#f15a22",
-            marginRight: "8px",
+            marginRight: "4px",
           }}
         />
         Modules
