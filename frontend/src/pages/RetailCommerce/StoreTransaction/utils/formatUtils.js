@@ -7,6 +7,24 @@ export const formatDate = (dateString) => {
     }
   }
   
+  // Format time for display
+  export const formatTime = (dateString) => {
+    try {
+      return new Date(dateString).toLocaleTimeString()
+    } catch (e) {
+      return ""
+    }
+  }
+  
+  // Format date and time for display
+  export const formatDateTime = (dateString) => {
+    try {
+      return new Date(dateString).toLocaleString()
+    } catch (e) {
+      return dateString
+    }
+  }
+  
   // Format currency for display
   export const formatCurrency = (amount) => {
     try {
@@ -64,6 +82,15 @@ export const formatDate = (dateString) => {
         return
       }
   
+      // Get current date and time for the print timestamp
+      const currentDate = new Date()
+      const printDate = formatDate(currentDate)
+      const printTime = formatTime(currentDate)
+  
+      // Format transaction date
+      const transactionDate = formatDate(transaction.date)
+      const transactionTime = formatTime(transaction.date)
+  
       const itemsList = transaction.items
         .map(
           (item) =>
@@ -92,12 +119,21 @@ export const formatDate = (dateString) => {
               .status { display: inline-block; padding: 5px 10px; border-radius: 4px; color: white; }
               .status-processed { background-color: #4caf50; }
               .status-not-paid { background-color: #f44336; }
+              .print-info { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.9em; color: #666; }
             </style>
           </head>
           <body>
+            <div class="print-info">
+              <div>
+                <strong>Printed on:</strong> ${printDate} at ${printTime}
+              </div>
+              <div>
+                <strong>Transaction Date:</strong> ${transactionDate} ${transactionTime ? `at ${transactionTime}` : ""}
+              </div>
+            </div>
+            
             <div class="header">
               <h1>Transaction Details</h1>
-              <p>Date: ${formatDate(transaction.date)}</p>
             </div>
             
             <div class="section">
