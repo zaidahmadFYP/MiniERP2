@@ -1,49 +1,18 @@
-"use client"
-
 import { useState, useRef, useEffect } from "react"
-import {
-  Box,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Typography,
-  TextField,
-  Card,
-  CardHeader,
-  CardContent,
-  Grid,
-  IconButton,
-  InputAdornment,
-  Collapse,
-  Button,
-  CircularProgress,
-  Alert,
-  Menu,
-  MenuItem,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  FormControl,
-  InputLabel,
-  Select,
-  Snackbar,
-} from "@mui/material"
-import {
-  Search,
-  KeyboardArrowDown,
-  KeyboardArrowUp,
-  FilterList,
-  Refresh,
-  Print,
-  CloudDownload,
-  MoreVert,
-  Close,
-} from "@mui/icons-material"
+import { Box, Paper, Typography, IconButton, Snackbar } from "@mui/material"
+import { Refresh, FilterList, KeyboardArrowDown } from "@mui/icons-material"
+
+// Import components
+import TransactionList from "./Components/TransactionList"
+import TransactionDetails from "./Components/TransactionDetails"
+import SearchBar from "./Components/SearchBar"
+import FilterDialog from "./Components/FilterDialog"
+import ExportMenu from "./Components/ExportMenu"
+import ErrorDisplay from "./Components/ErrorDisplay"
+import LoadingDisplay from "./Components/LoadingDisplay"
+
+// Import utilities
+import { formatDate, printTransaction } from "./utils/formatUtils"
 
 export default function TransactionTable() {
   // State for API data
@@ -56,9 +25,6 @@ export default function TransactionTable() {
   const [retryCount, setRetryCount] = useState(0)
 
   // UI state
-  const [generalOpen, setGeneralOpen] = useState(true)
-  const [amountOpen, setAmountOpen] = useState(true)
-  const [detailsOpen, setDetailsOpen] = useState(true)
   const [snackbarOpen, setSnackbarOpen] = useState(false)
   const [snackbarMessage, setSnackbarMessage] = useState("")
 
@@ -70,6 +36,8 @@ export default function TransactionTable() {
     maxAmount: "",
     dateFrom: "",
     dateTo: "",
+    paidStatus: "",
+    transactionStatus: "",
   })
 
   // Export menu state
@@ -103,13 +71,15 @@ export default function TransactionTable() {
       const data = await response.json()
 
       // Enhance the data with additional fields for UI display
-      const enhancedData = data.map((t, index) => ({
+      const enhancedData = data.map((t) => ({
         ...t,
-        id: t.id || index + 1,
+        id: t._id, // Use MongoDB _id as our id
+        transactionId: t.transactionID, // Use the specific transactionID field
         channel: t.paymentMethod === "Cash" ? "IN-STORE" : "ONLINE",
-        receipt: `RCPT-${index + 1000}`,
+        receipt: `RCPT-${t.transactionID || ""}`,
         store: "10052",
         purpose: t.items.length > 3 ? "BULK ORDER" : "REGULAR",
+        // Generate a distinct transaction number in TXN-XXXXXX format
         transactionNumber: `TXN-${new Date(t.date).getTime().toString().slice(-8)}`,
       }))
 
@@ -153,10 +123,14 @@ export default function TransactionTable() {
       const lowercasedQuery = searchQuery.toLowerCase()
       filtered = filtered.filter((t) => {
         return (
-          t.paymentMethod.toLowerCase().includes(lowercasedQuery) ||
-          t.total.toString().includes(lowercasedQuery) ||
-          (t.transactionNumber && t.transactionNumber.toLowerCase().includes(lowercasedQuery)) ||
-          t.items.some((item) => item.itemName.toLowerCase().includes(lowercasedQuery))
+          (typeof t.paymentMethod === "string" && t.paymentMethod.toLowerCase().includes(lowercasedQuery)) ||
+          (t.total && t.total.toString().includes(lowercasedQuery)) ||
+          (typeof t.transactionID === "string" && t.transactionID.toLowerCase().includes(lowercasedQuery)) ||
+          (typeof t.transactionNumber === "string" && t.transactionNumber.toLowerCase().includes(lowercasedQuery)) ||
+          (t.items &&
+            t.items.some(
+              (item) => typeof item.itemName === "string" && item.itemName.toLowerCase().includes(lowercasedQuery),
+            ))
         )
       })
     }
@@ -183,6 +157,14 @@ export default function TransactionTable() {
       const toDate = new Date(filterOptions.dateTo)
       toDate.setHours(23, 59, 59, 999) // End of day
       filtered = filtered.filter((t) => new Date(t.date) <= toDate)
+    }
+
+    if (filterOptions.paidStatus) {
+      filtered = filtered.filter((t) => t.paidStatus === filterOptions.paidStatus)
+    }
+
+    if (filterOptions.transactionStatus) {
+      filtered = filtered.filter((t) => t.transactionStatus === filterOptions.transactionStatus)
     }
 
     setFilteredTransactions(filtered)
@@ -230,27 +212,6 @@ export default function TransactionTable() {
     }
   }, [isDragging])
 
-  // Format date for display
-  const formatDate = (dateString) => {
-    try {
-      return new Date(dateString).toLocaleDateString()
-    } catch (e) {
-      return dateString
-    }
-  }
-
-  // Format currency for display
-  const formatCurrency = (amount) => {
-    try {
-      return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-      }).format(amount)
-    } catch (e) {
-      return `${amount}`
-    }
-  }
-
   // Show snackbar message
   const showSnackbar = (message) => {
     setSnackbarMessage(message)
@@ -271,6 +232,8 @@ export default function TransactionTable() {
       maxAmount: "",
       dateFrom: "",
       dateTo: "",
+      paidStatus: "",
+      transactionStatus: "",
     })
     setRetryCount((prevCount) => prevCount + 1) // This will trigger a re-fetch
   }
@@ -300,6 +263,8 @@ export default function TransactionTable() {
       maxAmount: "",
       dateFrom: "",
       dateTo: "",
+      paidStatus: "",
+      transactionStatus: "",
     })
     setFilterDialogOpen(false)
     applyFilters()
@@ -320,7 +285,16 @@ export default function TransactionTable() {
   const handleExportCSV = () => {
     try {
       // Create CSV content
-      const headers = ["Date", "Transaction Number", "Payment Method", "Total", "Items"]
+      const headers = [
+        "Date",
+        "Transaction ID",
+        "Transaction Number",
+        "Payment Method",
+        "Total",
+        "Status",
+        "Paid",
+        "Items",
+      ]
       let csvContent = headers.join(",") + "\n"
 
       const dataToExport = selectedTransaction ? [selectedTransaction] : filteredTransactions
@@ -329,9 +303,12 @@ export default function TransactionTable() {
         const itemsList = transaction.items.map((item) => `${item.itemName}(${item.itemQuantity})`).join("; ")
         const row = [
           formatDate(transaction.date),
-          transaction.transactionNumber,
-          transaction.paymentMethod,
-          transaction.total,
+          transaction.transactionID || "",
+          transaction.transactionNumber || "",
+          transaction.paymentMethod || "",
+          transaction.total || 0,
+          transaction.transactionStatus || "",
+          transaction.paidStatus || "",
           `"${itemsList}"`,
         ]
         csvContent += row.join(",") + "\n"
@@ -382,160 +359,28 @@ export default function TransactionTable() {
 
   // Handle print
   const handlePrint = () => {
-    try {
-      if (!selectedTransaction) {
-        showSnackbar("Please select a transaction to print")
-        return
-      }
-
-      // Create a printable version of the transaction
-      const printWindow = window.open("", "_blank")
-
-      if (!printWindow) {
-        showSnackbar("Pop-up blocked. Please allow pop-ups for printing.")
-        return
-      }
-
-      const itemsList = selectedTransaction.items
-        .map(
-          (item) =>
-            `<tr>
-          <td>${item.itemName}</td>
-          <td>${item.itemQuantity}</td>
-          <td>${formatCurrency((selectedTransaction.total / selectedTransaction.items.reduce((sum, i) => sum + i.itemQuantity, 0)) * item.itemQuantity)}</td>
-        </tr>`,
-        )
-        .join("")
-
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Transaction ${selectedTransaction.transactionNumber}</title>
-            <style>
-              body { font-family: Arial, sans-serif; margin: 20px; }
-              h1 { color: #333; }
-              table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-              th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-              th { background-color: #f2f2f2; }
-              .header { display: flex; justify-content: space-between; align-items: center; }
-              .section { margin-bottom: 20px; }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h1>Transaction Details</h1>
-              <p>Date: ${formatDate(selectedTransaction.date)}</p>
-            </div>
-            
-            <div class="section">
-              <h2>General Information</h2>
-              <table>
-                <tr>
-                  <th>Transaction Number</th>
-                  <td>${selectedTransaction.transactionNumber}</td>
-                </tr>
-                <tr>
-                  <th>Payment Method</th>
-                  <td>${selectedTransaction.paymentMethod}</td>
-                </tr>
-                <tr>
-                  <th>Channel</th>
-                  <td>${selectedTransaction.channel || ""}</td>
-                </tr>
-                <tr>
-                  <th>Total Amount</th>
-                  <td>${formatCurrency(selectedTransaction.total)}</td>
-                </tr>
-              </table>
-            </div>
-            
-            <div class="section">
-              <h2>Items</h2>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Item Name</th>
-                    <th>Quantity</th>
-                    <th>Estimated Price</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${itemsList}
-                </tbody>
-              </table>
-            </div>
-            
-            <div class="section">
-              <p><strong>Total Items:</strong> ${selectedTransaction.items.reduce((sum, item) => sum + item.itemQuantity, 0)}</p>
-              <p><strong>Total Amount:</strong> ${formatCurrency(selectedTransaction.total)}</p>
-            </div>
-            
-            <script>
-              window.onload = function() {
-                window.print();
-              }
-            </script>
-          </body>
-        </html>
-      `)
-
-      printWindow.document.close()
-      showSnackbar("Print job sent")
-    } catch (error) {
-      console.error("Print error:", error)
-      showSnackbar("Print failed")
+    if (!selectedTransaction) {
+      showSnackbar("Please select a transaction to print")
+      return
     }
+
+    printTransaction(selectedTransaction, showSnackbar)
   }
 
-  // Error display component
-  const ErrorDisplay = () => (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-        height: "100%",
-        p: 3,
-      }}
-    >
-      <Alert
-        severity="error"
-        sx={{
-          width: "100%",
-          maxWidth: 500,
-          mb: 2,
-        }}
-      >
-        {error}
-      </Alert>
-      <Button variant="contained" onClick={() => setRetryCount((prevCount) => prevCount + 1)} sx={{ mt: 2 }}>
-        Retry
-      </Button>
-    </Box>
-  )
+  // Get unique payment methods for filter dropdown
+  const uniquePaymentMethods = [...new Set(transactions.map((t) => t.paymentMethod).filter(Boolean))]
 
-  // Loading display component
-  const LoadingDisplay = () => (
-    <Box
-      sx={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        height: "100%",
-        flexDirection: "column",
-      }}
-    >
-      <CircularProgress size={60} />
-      <Typography sx={{ mt: 2 }}>Loading transactions...</Typography>
-    </Box>
-  )
+  // Get unique transaction statuses for filter dropdown
+  const uniqueTransactionStatuses = [...new Set(transactions.map((t) => t.transactionStatus).filter(Boolean))]
+
+  // Get unique paid statuses for filter dropdown
+  const uniquePaidStatuses = [...new Set(transactions.map((t) => t.paidStatus).filter(Boolean))]
 
   // If there's an error, show the error message
   if (error) {
     return (
-      <Box sx={{ height: "100vh", bgcolor: "#f5f5f7", p: 2 }}>
-        <ErrorDisplay />
+      <Box sx={{ height: "100%", bgcolor: "background.default", p: 2 }}>
+        <ErrorDisplay error={error} onRetry={() => setRetryCount((prevCount) => prevCount + 1)} />
       </Box>
     )
   }
@@ -543,17 +388,22 @@ export default function TransactionTable() {
   // If loading, show loading indicator
   if (loading) {
     return (
-      <Box sx={{ height: "100vh", bgcolor: "#f5f5f7", p: 2 }}>
+      <Box sx={{ height: "100%", bgcolor: "background.default", p: 2 }}>
         <LoadingDisplay />
       </Box>
     )
   }
 
-  // Get unique payment methods for filter dropdown
-  const uniquePaymentMethods = [...new Set(transactions.map((t) => t.paymentMethod))]
-
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100vh", bgcolor: "#f5f5f7" }}>
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        bgcolor: (theme) => (theme.palette.mode === "dark" ? "#121212" : "#f5f5f7"),
+        overflow: "hidden",
+      }}
+    >
       <Box
         ref={containerRef}
         sx={{
@@ -563,6 +413,7 @@ export default function TransactionTable() {
           position: "relative",
           p: 2,
           gap: 0,
+          overflow: "hidden",
         }}
       >
         {/* Left side - Transaction list */}
@@ -574,90 +425,71 @@ export default function TransactionTable() {
             flexDirection: "column",
             borderRadius: 2,
             overflow: "hidden",
+            bgcolor: (theme) => (theme.palette.mode === "dark" ? "#1e1e1e" : "#ffffff"),
           }}
         >
-          <Box sx={{ p: 2, borderBottom: "1px solid rgba(0, 0, 0, 0.08)" }}>
+          <Box
+            sx={{
+              p: 2,
+              borderBottom: (theme) =>
+                `1px solid ${theme.palette.mode === "dark" ? "rgba(255, 255, 255, 0.12)" : "rgba(0, 0, 0, 0.08)"}`,
+            }}
+          >
             <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
-              <Typography variant="subtitle1" sx={{ color: "#666", fontWeight: 500 }}>
+              <Typography
+                variant="subtitle1"
+                sx={{
+                  color: (theme) => (theme.palette.mode === "dark" ? "#b0b0b0" : "#666"),
+                  fontWeight: 500,
+                }}
+              >
                 Standard view
               </Typography>
               <IconButton size="small">
                 <KeyboardArrowDown />
               </IconButton>
             </Box>
-            <Typography variant="h5" sx={{ fontWeight: 600, mb: 2, color: "#333" }}>
+            <Typography
+              variant="h5"
+              sx={{
+                fontWeight: 600,
+                mb: 2,
+                color: (theme) => (theme.palette.mode === "dark" ? "#ffffff" : "#333"),
+              }}
+            >
               Store transactions
             </Typography>
 
             <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
-              <TextField
-                placeholder="Filter"
-                variant="outlined"
-                size="small"
-                fullWidth
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Search />
-                    </InputAdornment>
-                  ),
+              <SearchBar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+              <IconButton
+                sx={{
+                  border: (theme) =>
+                    `1px solid ${theme.palette.mode === "dark" ? "rgba(255, 255, 255, 0.23)" : "rgba(0, 0, 0, 0.23)"}`,
+                  borderRadius: 1,
                 }}
-              />
-              <IconButton sx={{ border: "1px solid rgba(0, 0, 0, 0.23)", borderRadius: 1 }} onClick={handleFilterOpen}>
+                onClick={handleFilterOpen}
+              >
                 <FilterList />
               </IconButton>
-              <IconButton sx={{ border: "1px solid rgba(0, 0, 0, 0.23)", borderRadius: 1 }} onClick={handleRefresh}>
+              <IconButton
+                sx={{
+                  border: (theme) =>
+                    `1px solid ${theme.palette.mode === "dark" ? "rgba(255, 255, 255, 0.23)" : "rgba(0, 0, 0, 0.23)"}`,
+                  borderRadius: 1,
+                }}
+                onClick={handleRefresh}
+              >
                 <Refresh />
               </IconButton>
             </Box>
           </Box>
 
-          <TableContainer sx={{ flexGrow: 1, overflowY: "auto" }}>
-            <Table size="small" aria-label="transaction table" stickyHeader>
-              <TableHead>
-                <TableRow sx={{ "& th": { fontWeight: 600, bgcolor: "#f5f5f7" } }}>
-                  <TableCell>Date</TableCell>
-                  <TableCell>Payment Method</TableCell>
-                  <TableCell>Transaction Number</TableCell>
-                  <TableCell>Total</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredTransactions.length > 0 ? (
-                  filteredTransactions.map((transaction) => (
-                    <TableRow
-                      key={transaction.id}
-                      hover
-                      selected={selectedTransaction && selectedTransaction.id === transaction.id}
-                      onClick={() => handleRowClick(transaction)}
-                      sx={{
-                        cursor: "pointer",
-                        "&.Mui-selected": {
-                          backgroundColor: "rgba(25, 118, 210, 0.08)",
-                        },
-                        "&:hover": {
-                          backgroundColor: "rgba(0, 0, 0, 0.04)",
-                        },
-                      }}
-                    >
-                      <TableCell>{formatDate(transaction.date)}</TableCell>
-                      <TableCell>{transaction.paymentMethod}</TableCell>
-                      <TableCell>{transaction.transactionNumber}</TableCell>
-                      <TableCell>{formatCurrency(transaction.total)}</TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={4} align="center">
-                      No transactions found
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <TransactionList
+            transactions={filteredTransactions}
+            selectedTransaction={selectedTransaction}
+            onRowClick={handleRowClick}
+          />
         </Paper>
 
         {/* Resizable splitter */}
@@ -667,7 +499,9 @@ export default function TransactionTable() {
           sx={{
             width: "8px",
             cursor: "col-resize",
-            backgroundColor: isDragging ? "#1976d2" : "rgba(0, 0, 0, 0.1)",
+            backgroundColor: isDragging
+              ? "#1976d2"
+              : (theme) => (theme.palette.mode === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)"),
             transition: isDragging ? "none" : "background-color 0.2s",
             "&:hover": {
               backgroundColor: "#1976d2",
@@ -686,6 +520,7 @@ export default function TransactionTable() {
             overflowY: "auto",
             borderRadius: 2,
             p: 0,
+            bgcolor: (theme) => (theme.palette.mode === "dark" ? "#1e1e1e" : "#ffffff"),
           }}
         >
           {!selectedTransaction ? (
@@ -697,468 +532,42 @@ export default function TransactionTable() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
+                color: (theme) => (theme.palette.mode === "dark" ? "#b0b0b0" : "text.secondary"),
               }}
             >
               <Typography>Select a transaction to view details</Typography>
             </Box>
           ) : (
-            <>
-              <Box sx={{ p: 2, borderBottom: "1px solid rgba(0, 0, 0, 0.08)" }}>
-                <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
-                  <Box>
-                    <Typography variant="subtitle2" sx={{ color: "#666" }}>
-                      Transaction number
-                    </Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                      {selectedTransaction.transactionNumber}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ display: "flex", gap: 1 }}>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<Print />}
-                      sx={{ textTransform: "none" }}
-                      onClick={handlePrint}
-                    >
-                      Print
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<CloudDownload />}
-                      sx={{ textTransform: "none" }}
-                      onClick={handleExportMenuOpen}
-                    >
-                      Export
-                    </Button>
-                    <IconButton size="small">
-                      <MoreVert />
-                    </IconButton>
-                  </Box>
-                </Box>
-
-                <Grid container spacing={2}>
-                  <Grid item xs={4}>
-                    <Typography variant="subtitle2" sx={{ color: "#666" }}>
-                      Transaction Number
-                    </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                      {selectedTransaction.transactionNumber}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={4}>
-                    <Typography variant="subtitle2" sx={{ color: "#666" }}>
-                      Date
-                    </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                      {formatDate(selectedTransaction.date)}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={4}>
-                    <Typography variant="subtitle2" sx={{ color: "#666" }}>
-                      Payment Method
-                    </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                      {selectedTransaction.paymentMethod}
-                    </Typography>
-                  </Grid>
-                </Grid>
-              </Box>
-
-              <Box sx={{ p: 2 }}>
-                {/* General section */}
-                <Card
-                  variant="outlined"
-                  sx={{
-                    mb: 2,
-                    borderRadius: 1,
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-                  }}
-                >
-                  <CardHeader
-                    title={
-                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                          General
-                        </Typography>
-                        <Box sx={{ display: "flex", alignItems: "center" }}>
-                          <Typography variant="body2" sx={{ color: "#666", mr: 1 }}>
-                            {selectedTransaction.channel || ""}
-                          </Typography>
-                          <IconButton
-                            size="small"
-                            onClick={() => setGeneralOpen(!generalOpen)}
-                            aria-expanded={generalOpen}
-                            aria-label="show more"
-                          >
-                            {generalOpen ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
-                          </IconButton>
-                        </Box>
-                      </Box>
-                    }
-                    sx={{ p: 1.5, bgcolor: "#f9f9f9" }}
-                  />
-                  <Collapse in={generalOpen} timeout="auto" unmountOnExit>
-                    <CardContent sx={{ p: 2 }}>
-                      <Grid container spacing={2}>
-                        <Grid item xs={6}>
-                          <Typography variant="subtitle2" sx={{ color: "#666", mb: 0.5 }}>
-                            Transaction Date
-                          </Typography>
-                          <TextField
-                            size="small"
-                            fullWidth
-                            value={formatDate(selectedTransaction.date)}
-                            InputProps={{ readOnly: true }}
-                            sx={{
-                              "& .MuiOutlinedInput-root": {
-                                borderRadius: 1,
-                              },
-                            }}
-                          />
-                        </Grid>
-                        <Grid item xs={6}>
-                          <Typography variant="subtitle2" sx={{ color: "#666", mb: 0.5 }}>
-                            Payment Method
-                          </Typography>
-                          <TextField
-                            size="small"
-                            fullWidth
-                            value={selectedTransaction.paymentMethod}
-                            InputProps={{ readOnly: true }}
-                            sx={{
-                              "& .MuiOutlinedInput-root": {
-                                borderRadius: 1,
-                              },
-                            }}
-                          />
-                        </Grid>
-                        <Grid item xs={6}>
-                          <Typography variant="subtitle2" sx={{ color: "#666", mb: 0.5 }}>
-                            Transaction Number
-                          </Typography>
-                          <TextField
-                            size="small"
-                            fullWidth
-                            value={selectedTransaction.transactionNumber || ""}
-                            InputProps={{ readOnly: true }}
-                            sx={{
-                              "& .MuiOutlinedInput-root": {
-                                borderRadius: 1,
-                              },
-                            }}
-                          />
-                        </Grid>
-                        <Grid item xs={6}>
-                          <Typography variant="subtitle2" sx={{ color: "#666", mb: 0.5 }}>
-                            Channel
-                          </Typography>
-                          <TextField
-                            size="small"
-                            fullWidth
-                            value={selectedTransaction.channel || ""}
-                            InputProps={{ readOnly: true }}
-                            sx={{
-                              "& .MuiOutlinedInput-root": {
-                                borderRadius: 1,
-                              },
-                            }}
-                          />
-                        </Grid>
-                        <Grid item xs={6}>
-                          <Typography variant="subtitle2" sx={{ color: "#666", mb: 0.5 }}>
-                            Purpose
-                          </Typography>
-                          <TextField
-                            size="small"
-                            fullWidth
-                            value={selectedTransaction.purpose || ""}
-                            InputProps={{ readOnly: true }}
-                            sx={{
-                              "& .MuiOutlinedInput-root": {
-                                borderRadius: 1,
-                              },
-                            }}
-                          />
-                        </Grid>
-                        <Grid item xs={6}>
-                          <Typography variant="subtitle2" sx={{ color: "#666", mb: 0.5 }}>
-                            Total Items
-                          </Typography>
-                          <TextField
-                            size="small"
-                            fullWidth
-                            value={selectedTransaction.items ? selectedTransaction.items.length : 0}
-                            InputProps={{ readOnly: true }}
-                            sx={{
-                              "& .MuiOutlinedInput-root": {
-                                borderRadius: 1,
-                              },
-                            }}
-                          />
-                        </Grid>
-                      </Grid>
-                    </CardContent>
-                  </Collapse>
-                </Card>
-
-                {/* Amount section */}
-                <Card
-                  variant="outlined"
-                  sx={{
-                    mb: 2,
-                    borderRadius: 1,
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-                  }}
-                >
-                  <CardHeader
-                    title={
-                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                          Amount
-                        </Typography>
-                        <IconButton
-                          size="small"
-                          onClick={() => setAmountOpen(!amountOpen)}
-                          aria-expanded={amountOpen}
-                          aria-label="show more"
-                        >
-                          {amountOpen ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
-                        </IconButton>
-                      </Box>
-                    }
-                    sx={{ p: 1.5, bgcolor: "#f9f9f9" }}
-                  />
-                  <Collapse in={amountOpen} timeout="auto" unmountOnExit>
-                    <CardContent sx={{ p: 2 }}>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1.5, color: "#555" }}>
-                        AMOUNTS
-                      </Typography>
-                      <Grid container spacing={2}>
-                        <Grid item xs={4}>
-                          <Typography variant="subtitle2" sx={{ color: "#666", mb: 0.5 }}>
-                            Total Amount
-                          </Typography>
-                          <TextField
-                            size="small"
-                            fullWidth
-                            value={formatCurrency(selectedTransaction.total)}
-                            InputProps={{ readOnly: true }}
-                            sx={{
-                              "& .MuiOutlinedInput-root": {
-                                borderRadius: 1,
-                              },
-                            }}
-                          />
-                        </Grid>
-                        <Grid item xs={4}>
-                          <Typography variant="subtitle2" sx={{ color: "#666", mb: 0.5 }}>
-                            Item Count
-                          </Typography>
-                          <TextField
-                            size="small"
-                            fullWidth
-                            value={
-                              selectedTransaction.items
-                                ? selectedTransaction.items.reduce((sum, item) => sum + item.itemQuantity, 0)
-                                : 0
-                            }
-                            InputProps={{ readOnly: true }}
-                            sx={{
-                              "& .MuiOutlinedInput-root": {
-                                borderRadius: 1,
-                              },
-                            }}
-                          />
-                        </Grid>
-                        <Grid item xs={4}>
-                          <Typography variant="subtitle2" sx={{ color: "#666", mb: 0.5 }}>
-                            Average Item Price
-                          </Typography>
-                          <TextField
-                            size="small"
-                            fullWidth
-                            value={formatCurrency(
-                              selectedTransaction.total /
-                                Math.max(
-                                  1,
-                                  selectedTransaction.items
-                                    ? selectedTransaction.items.reduce((sum, item) => sum + item.itemQuantity, 0)
-                                    : 1,
-                                ),
-                            )}
-                            InputProps={{ readOnly: true }}
-                            sx={{
-                              "& .MuiOutlinedInput-root": {
-                                borderRadius: 1,
-                              },
-                            }}
-                          />
-                        </Grid>
-                      </Grid>
-                    </CardContent>
-                  </Collapse>
-                </Card>
-
-                {/* Details section - Items */}
-                <Card
-                  variant="outlined"
-                  sx={{
-                    mb: 2,
-                    borderRadius: 1,
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-                  }}
-                >
-                  <CardHeader
-                    title={
-                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                          Items
-                        </Typography>
-                        <IconButton
-                          size="small"
-                          onClick={() => setDetailsOpen(!detailsOpen)}
-                          aria-expanded={detailsOpen}
-                          aria-label="show more"
-                        >
-                          {detailsOpen ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
-                        </IconButton>
-                      </Box>
-                    }
-                    sx={{ p: 1.5, bgcolor: "#f9f9f9" }}
-                  />
-                  <Collapse in={detailsOpen} timeout="auto" unmountOnExit>
-                    <CardContent sx={{ p: 2 }}>
-                      {selectedTransaction.items && selectedTransaction.items.length > 0 ? (
-                        <TableContainer>
-                          <Table size="small">
-                            <TableHead>
-                              <TableRow>
-                                <TableCell sx={{ fontWeight: 600 }}>Item Name</TableCell>
-                                <TableCell sx={{ fontWeight: 600 }}>Quantity</TableCell>
-                                <TableCell sx={{ fontWeight: 600 }}>Est. Price</TableCell>
-                              </TableRow>
-                            </TableHead>
-                            <TableBody>
-                              {selectedTransaction.items.map((item, index) => {
-                                // Calculate estimated price per item (total divided by total quantity)
-                                const totalQuantity = selectedTransaction.items
-                                  ? selectedTransaction.items.reduce((sum, i) => sum + i.itemQuantity, 0)
-                                  : 1
-                                const estimatedPrice = (selectedTransaction.total / totalQuantity) * item.itemQuantity
-
-                                return (
-                                  <TableRow key={index}>
-                                    <TableCell>{item.itemName}</TableCell>
-                                    <TableCell>{item.itemQuantity}</TableCell>
-                                    <TableCell>{formatCurrency(estimatedPrice)}</TableCell>
-                                  </TableRow>
-                                )
-                              })}
-                            </TableBody>
-                          </Table>
-                        </TableContainer>
-                      ) : (
-                        <Typography align="center">No items found</Typography>
-                      )}
-                    </CardContent>
-                  </Collapse>
-                </Card>
-              </Box>
-            </>
+            <TransactionDetails
+              transaction={selectedTransaction}
+              onPrint={handlePrint}
+              onExportMenuOpen={handleExportMenuOpen}
+            />
           )}
         </Paper>
       </Box>
 
       {/* Filter Dialog */}
-      <Dialog open={filterDialogOpen} onClose={handleFilterClose} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <Typography variant="h6">Advanced Filters</Typography>
-            <IconButton onClick={handleFilterClose} size="small">
-              <Close />
-            </IconButton>
-          </Box>
-        </DialogTitle>
-        <DialogContent dividers>
-          <Grid container spacing={2}>
-            <Grid item xs={12}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Payment Method</InputLabel>
-                <Select
-                  value={filterOptions.paymentMethod}
-                  label="Payment Method"
-                  onChange={(e) => setFilterOptions({ ...filterOptions, paymentMethod: e.target.value })}
-                >
-                  <MenuItem value="">All</MenuItem>
-                  {uniquePaymentMethods.map((method) => (
-                    <MenuItem key={method} value={method}>
-                      {method}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                label="Min Amount"
-                type="number"
-                size="small"
-                fullWidth
-                value={filterOptions.minAmount}
-                onChange={(e) => setFilterOptions({ ...filterOptions, minAmount: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                label="Max Amount"
-                type="number"
-                size="small"
-                fullWidth
-                value={filterOptions.maxAmount}
-                onChange={(e) => setFilterOptions({ ...filterOptions, maxAmount: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                label="Date From"
-                type="date"
-                size="small"
-                fullWidth
-                value={filterOptions.dateFrom}
-                onChange={(e) => setFilterOptions({ ...filterOptions, dateFrom: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                label="Date To"
-                type="date"
-                size="small"
-                fullWidth
-                value={filterOptions.dateTo}
-                onChange={(e) => setFilterOptions({ ...filterOptions, dateTo: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleFilterReset} color="inherit">
-            Reset
-          </Button>
-          <Button onClick={handleFilterApply} variant="contained">
-            Apply Filters
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <FilterDialog
+        open={filterDialogOpen}
+        onClose={handleFilterClose}
+        filterOptions={filterOptions}
+        setFilterOptions={setFilterOptions}
+        onApply={handleFilterApply}
+        onReset={handleFilterReset}
+        paymentMethods={uniquePaymentMethods}
+        transactionStatuses={uniqueTransactionStatuses}
+        paidStatuses={uniquePaidStatuses}
+      />
 
       {/* Export Menu */}
-      <Menu anchorEl={exportMenuAnchorEl} open={exportMenuOpen} onClose={handleExportMenuClose}>
-        <MenuItem onClick={handleExportCSV}>Export as CSV</MenuItem>
-        <MenuItem onClick={handleExportJSON}>Export as JSON</MenuItem>
-      </Menu>
+      <ExportMenu
+        anchorEl={exportMenuAnchorEl}
+        open={exportMenuOpen}
+        onClose={handleExportMenuClose}
+        onExportCSV={handleExportCSV}
+        onExportJSON={handleExportJSON}
+      />
 
       {/* Snackbar for notifications */}
       <Snackbar open={snackbarOpen} autoHideDuration={3000} onClose={handleSnackbarClose} message={snackbarMessage} />
