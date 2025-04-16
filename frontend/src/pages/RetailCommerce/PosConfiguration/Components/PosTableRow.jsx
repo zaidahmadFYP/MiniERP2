@@ -1,8 +1,6 @@
-"use client"
-
 import { TableRow, TableCell, Checkbox, Box, Typography, IconButton, Tooltip } from "@mui/material"
 import { useTheme } from "@mui/material/styles"
-import { CheckCircle, Cancel, Visibility, VisibilityOff, ContentCopy } from "@mui/icons-material"
+import { CheckCircle, Cancel, Visibility, VisibilityOff, ContentCopy, AccessTime } from "@mui/icons-material"
 
 const PosTableRow = ({
   row,
@@ -13,6 +11,39 @@ const PosTableRow = ({
   copyPasswordToClipboard,
 }) => {
   const theme = useTheme()
+  
+  // Custom orange color
+  const orangeColor = "#f15a22"
+
+  // Format date to display in a readable format
+  const formatDate = (dateString) => {
+    if (!dateString) return null
+    const date = new Date(dateString)
+    return date.toLocaleDateString()
+  }
+
+  // Display time bound information
+  const renderTimeBound = () => {
+    if (!row.timeBoundEnabled) {
+      return (
+        <Typography variant="body2" color="textSecondary">
+          Not enabled
+        </Typography>
+      )
+    }
+
+    const startDate = formatDate(row.timeBoundStart)
+    const endDate = formatDate(row.timeBoundEnd)
+
+    return (
+      <Box sx={{ display: "flex", alignItems: "center" }}>
+        <AccessTime fontSize="small" sx={{ mr: 0.5, fontSize: "14px", color: orangeColor }} />
+        <Typography variant="body2">
+          {startDate} - {endDate || "No end date"}
+        </Typography>
+      </Box>
+    )
+  }
 
   return (
     <TableRow
@@ -21,10 +52,10 @@ const PosTableRow = ({
       onClick={() => handleSelectRow(row.id)}
       sx={{
         "&.Mui-selected": {
-          backgroundColor: theme.palette.mode === "dark" ? "rgba(25, 118, 210, 0.16)" : "rgba(25, 118, 210, 0.08)",
+          backgroundColor: theme.palette.mode === "dark" ? "rgba(241, 90, 34, 0.16)" : "rgba(241, 90, 34, 0.08)",
         },
         "&.Mui-selected:hover": {
-          backgroundColor: theme.palette.mode === "dark" ? "rgba(25, 118, 210, 0.24)" : "rgba(25, 118, 210, 0.12)",
+          backgroundColor: theme.palette.mode === "dark" ? "rgba(241, 90, 34, 0.24)" : "rgba(241, 90, 34, 0.12)",
         },
         "&:hover": {
           backgroundColor: theme.palette.action.hover,
@@ -51,7 +82,7 @@ const PosTableRow = ({
           sx={{
             color: theme.palette.text.secondary,
             "&.Mui-checked": {
-              color: theme.palette.primary.main,
+              color: orangeColor,
             },
           }}
         />
@@ -77,8 +108,8 @@ const PosTableRow = ({
               color: theme.palette.success.main,
             }),
             ...(row.authorityType === "FBR" && {
-              bgcolor: theme.palette.mode === "dark" ? "rgba(237, 108, 2, 0.2)" : "rgba(237, 108, 2, 0.1)",
-              color: theme.palette.warning.main,
+              bgcolor: theme.palette.mode === "dark" ? "rgba(241, 90, 34, 0.2)" : "rgba(241, 90, 34, 0.1)",
+              color: orangeColor,
             }),
           }}
         >
@@ -99,7 +130,7 @@ const PosTableRow = ({
                   cursor: "pointer",
                   "&:hover": {
                     textDecoration: "underline",
-                    color: theme.palette.primary.main,
+                    color: orangeColor,
                   },
                   display: "flex",
                   alignItems: "center",
@@ -128,7 +159,7 @@ const PosTableRow = ({
           "-"
         )}
       </TableCell>
-      <TableCell>{row.timeBound}</TableCell>
+      <TableCell>{renderTimeBound()}</TableCell>
       <TableCell>
         <Box
           sx={{

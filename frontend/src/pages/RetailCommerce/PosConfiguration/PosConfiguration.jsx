@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import { Card, Snackbar, Alert } from "@mui/material"
 import { useTheme } from "@mui/material/styles"
@@ -34,6 +32,9 @@ const PosConfiguration = ({ open = true }) => {
   const [error, setError] = useState(null)
   const [visiblePasswords, setVisiblePasswords] = useState({})
 
+  // Custom orange color
+  const orangeColor = "#f15a22"
+
   // Fetch POS configurations on component mount
   useEffect(() => {
     fetchPosConfigurations()
@@ -59,6 +60,12 @@ const PosConfiguration = ({ open = true }) => {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Refresh data
+  const handleRefresh = () => {
+    fetchPosConfigurations()
+    handleOptionsClose()
   }
 
   // Filter data based on search text
@@ -146,7 +153,15 @@ const PosConfiguration = ({ open = true }) => {
     }
 
     const posToEdit = posData.find((pos) => pos.id === selected[0])
-    setCurrentPos({ ...posToEdit })
+
+    // Check if time bound is enabled based on existing dates
+    const timeBoundEnabled = !!(posToEdit.timeBoundStart || posToEdit.timeBoundEnd)
+
+    setCurrentPos({
+      ...posToEdit,
+      timeBoundEnabled,
+    })
+
     setEditDialogOpen(true)
   }
 
@@ -154,14 +169,24 @@ const PosConfiguration = ({ open = true }) => {
   const handleSaveEdit = async () => {
     try {
       setLoading(true)
+
+      // Create a copy of currentPos for backend formatting
+      const posToUpdate = { ...currentPos }
+
+      // If time bound is disabled, clear the dates before sending to backend
+      if (!posToUpdate.timeBoundEnabled) {
+        posToUpdate.timeBoundStart = null
+        posToUpdate.timeBoundEnd = null
+      }
+
       // Format data for backend
-      const backendData = formatPosConfigForBackend(currentPos)
+      const backendData = formatPosConfigForBackend(posToUpdate)
 
       // Send update to backend
-      await updatePosConfig(currentPos.posId, backendData)
+      await updatePosConfig(posToUpdate.posId, backendData)
 
       // Update local state
-      setPosData(posData.map((pos) => (pos.id === currentPos.id ? currentPos : pos)))
+      setPosData(posData.map((pos) => (pos.id === posToUpdate.id ? posToUpdate : pos)))
 
       setEditDialogOpen(false)
       setSnackbar({
@@ -192,11 +217,6 @@ const PosConfiguration = ({ open = true }) => {
     // Generate random 6-digit Registration Number
     const randomRegNumber = Math.floor(100000 + Math.random() * 900000).toString()
 
-    // Set default dates for TimeBound
-    const now = new Date()
-    const nextYear = new Date()
-    nextYear.setFullYear(now.getFullYear() + 1)
-
     setCurrentPos({
       id: randomRegNumber,
       posId: randomPosId,
@@ -205,8 +225,9 @@ const PosConfiguration = ({ open = true }) => {
       offlineToken: "",
       userName: "", // Optional
       password: "", // Optional
-      timeBoundStart: now, // Required by backend
-      timeBoundEnd: nextYear, // Required by backend
+      timeBoundEnabled: false, // Time bound disabled by default
+      timeBoundStart: null,
+      timeBoundEnd: null,
       status: "ONLINE",
     })
     setNewDialogOpen(true)
@@ -217,8 +238,17 @@ const PosConfiguration = ({ open = true }) => {
     try {
       setLoading(true)
 
+      // Create a copy of currentPos for backend formatting
+      const posToCreate = { ...currentPos }
+
+      // If time bound is disabled, ensure the dates are null before sending to backend
+      if (!posToCreate.timeBoundEnabled) {
+        posToCreate.timeBoundStart = null
+        posToCreate.timeBoundEnd = null
+      }
+
       // Format data for backend
-      const backendData = formatPosConfigForBackend(currentPos)
+      const backendData = formatPosConfigForBackend(posToCreate)
 
       // Ensure status is set to ONLINE for new POS configurations
       if (!backendData.POSStatus) {
@@ -281,9 +311,12 @@ const PosConfiguration = ({ open = true }) => {
     const headers = ["Register Number", "POS ID", "Authority Type", "Status", "Username", "Password", "Time Bound"]
     const csvContent = [
       headers.join(","),
-      ...filteredData.map((row) =>
-        [row.id, row.posId, row.authorityType, row.status, row.userName, row.password, row.timeBound].join(","),
-      ),
+      ...filteredData.map((row) => {
+        const timeBound = row.timeBoundEnabled
+          ? `${row.timeBoundStart ? new Date(row.timeBoundStart).toLocaleDateString() : "N/A"} - ${row.timeBoundEnd ? new Date(row.timeBoundEnd).toLocaleDateString() : "N/A"}`
+          : "Not enabled"
+        return [row.id, row.posId, row.authorityType, row.status, row.userName, row.password, timeBound].join(",")
+      }),
     ].join("\n")
 
     // Create download link
@@ -305,15 +338,150 @@ const PosConfiguration = ({ open = true }) => {
     handleOptionsClose()
   }
 
-  // Print data
+  // Improved print functionality
   const handlePrint = () => {
-    window.print()
-    handleOptionsClose()
-  }
+    // Create a printable version of the table
+    const printContent = document.createElement("div")
+    printContent.style.width = "100%"
+    printContent.style.padding = "20px"
 
-  // Refresh data
-  const handleRefresh = () => {
-    fetchPosConfigurations()
+    // Add title
+    const title = document.createElement("h1")
+    title.textContent = "POS Configurations"
+    title.style.fontSize = "24px"
+    title.style.marginBottom = "20px"
+    title.style.color = orangeColor
+    title.style.fontFamily = "Arial, sans-serif"
+    printContent.appendChild(title)
+
+    // Add date
+    const date = document.createElement("p")
+    date.textContent = `Generated on: ${new Date().toLocaleString()}`
+    date.style.marginBottom = "20px"
+    date.style.fontFamily = "Arial, sans-serif"
+    printContent.appendChild(date)
+
+    // Create table
+    const table = document.createElement("table")
+    table.style.width = "100%"
+    table.style.borderCollapse = "collapse"
+    table.style.fontFamily = "Arial, sans-serif"
+
+    // Create header row
+    const headerRow = document.createElement("tr")
+    const headers = ["Register Number", "POS ID", "Authority Type", "Username", "Password", "Time Bound", "Status"]
+
+    headers.forEach((headerText) => {
+      const header = document.createElement("th")
+      header.textContent = headerText
+      header.style.border = "1px solid #ddd"
+      header.style.padding = "8px"
+      header.style.backgroundColor = orangeColor
+      header.style.color = "white"
+      header.style.textAlign = "left"
+      headerRow.appendChild(header)
+    })
+
+    table.appendChild(headerRow)
+
+    // Add data rows
+    filteredData.forEach((row) => {
+      const dataRow = document.createElement("tr")
+
+      // Register Number
+      const cell1 = document.createElement("td")
+      cell1.textContent = row.id
+      cell1.style.border = "1px solid #ddd"
+      cell1.style.padding = "8px"
+      dataRow.appendChild(cell1)
+
+      // POS ID
+      const cell2 = document.createElement("td")
+      cell2.textContent = row.posId
+      cell2.style.border = "1px solid #ddd"
+      cell2.style.padding = "8px"
+      dataRow.appendChild(cell2)
+
+      // Authority Type
+      const cell3 = document.createElement("td")
+      cell3.textContent = row.authorityType
+      cell3.style.border = "1px solid #ddd"
+      cell3.style.padding = "8px"
+      dataRow.appendChild(cell3)
+
+      // Username
+      const cell4 = document.createElement("td")
+      cell4.textContent = row.userName || "-"
+      cell4.style.border = "1px solid #ddd"
+      cell4.style.padding = "8px"
+      dataRow.appendChild(cell4)
+
+      // Password
+      const cell5 = document.createElement("td")
+      cell5.textContent = row.password || "-"
+      cell5.style.border = "1px solid #ddd"
+      cell5.style.padding = "8px"
+      dataRow.appendChild(cell5)
+
+      // Time Bound
+      const cell6 = document.createElement("td")
+      if (row.timeBoundEnabled) {
+        const startDate = row.timeBoundStart ? new Date(row.timeBoundStart).toLocaleDateString() : "N/A"
+        const endDate = row.timeBoundEnd ? new Date(row.timeBoundEnd).toLocaleDateString() : "N/A"
+        cell6.textContent = `${startDate} - ${endDate}`
+      } else {
+        cell6.textContent = "Not enabled"
+      }
+      cell6.style.border = "1px solid #ddd"
+      cell6.style.padding = "8px"
+      dataRow.appendChild(cell6)
+
+      // Status
+      const cell7 = document.createElement("td")
+      cell7.textContent = row.status
+      cell7.style.border = "1px solid #ddd"
+      cell7.style.padding = "8px"
+      cell7.style.color = row.status === "ONLINE" ? "green" : "red"
+      dataRow.appendChild(cell7)
+
+      table.appendChild(dataRow)
+    })
+
+    printContent.appendChild(table)
+
+    // Add footer
+    const footer = document.createElement("p")
+    footer.textContent = `Total items: ${filteredData.length}`
+    footer.style.marginTop = "20px"
+    footer.style.fontFamily = "Arial, sans-serif"
+    printContent.appendChild(footer)
+
+    // Create a new window for printing
+    const printWindow = window.open("", "_blank")
+    printWindow.document.write("<html><head><title>POS Configurations</title></head><body>")
+    printWindow.document.write(printContent.outerHTML)
+    printWindow.document.write("</body></html>")
+    printWindow.document.close()
+
+    // Add print styles
+    const style = printWindow.document.createElement("style")
+    style.textContent = `
+      @media print {
+        body { margin: 0; padding: 20px; }
+        table { page-break-inside: auto; }
+        tr { page-break-inside: avoid; page-break-after: auto; }
+        thead { display: table-header-group; }
+        tfoot { display: table-footer-group; }
+      }
+    `
+    printWindow.document.head.appendChild(style)
+
+    // Print and close
+    setTimeout(() => {
+      printWindow.print()
+      printWindow.close()
+    }, 500)
+
     handleOptionsClose()
   }
 

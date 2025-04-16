@@ -1,5 +1,3 @@
-"use client"
-
 import {
   Dialog,
   DialogTitle,
@@ -14,6 +12,8 @@ import {
   Button,
   CircularProgress,
   Grid,
+  FormControlLabel,
+  Switch,
 } from "@mui/material"
 import { useTheme } from "@mui/material/styles"
 import { DatePicker } from "@mui/x-date-pickers/DatePicker"
@@ -22,6 +22,32 @@ import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns"
 
 const EditPosDialog = ({ open, currentPos, setCurrentPos, handleClose, handleSave, loading }) => {
   const theme = useTheme()
+  
+  // Custom orange color
+  const orangeColor = "#f15a22"
+
+  // Handle time bound toggle
+  const handleTimeBoundToggle = (event) => {
+    const isEnabled = event.target.checked
+
+    if (isEnabled) {
+      // If enabled, set current date as time in bound
+      setCurrentPos({
+        ...currentPos,
+        timeBoundEnabled: true,
+        timeBoundStart: new Date(),
+        timeBoundEnd: currentPos?.timeBoundEnd || null,
+      })
+    } else {
+      // If disabled, clear time bound dates
+      setCurrentPos({
+        ...currentPos,
+        timeBoundEnabled: false,
+        timeBoundStart: null,
+        timeBoundEnd: null,
+      })
+    }
+  }
 
   return (
     <Dialog
@@ -101,38 +127,63 @@ const EditPosDialog = ({ open, currentPos, setCurrentPos, handleClose, handleSav
             InputLabelProps={{ shrink: true }}
             helperText="Maximum 6 characters"
           />
-          <LocalizationProvider dateAdapter={AdapterDateFns}>
-            <Grid container spacing={2}>
-              <Grid item xs={6}>
-                <DatePicker
-                  label="Time Bound Start"
-                  value={currentPos?.timeBoundStart || null}
-                  onChange={(date) => setCurrentPos({ ...currentPos, timeBoundStart: date })}
-                  slotProps={{
-                    textField: {
-                      variant: "filled",
-                      fullWidth: true,
-                      InputLabelProps: { shrink: true },
-                    },
-                  }}
-                />
+
+          {/* Time Bound Toggle */}
+          <FormControlLabel
+            control={
+              <Switch
+                checked={currentPos?.timeBoundEnabled || false}
+                onChange={handleTimeBoundToggle}
+                color="primary"
+                sx={{
+                  '& .MuiSwitch-switchBase.Mui-checked': {
+                    color: orangeColor,
+                  },
+                  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                    backgroundColor: orangeColor,
+                  },
+                }}
+              />
+            }
+            label="Enable Time Bound"
+          />
+
+          {/* Time Bound Date Pickers - Only shown when time bound is enabled */}
+          {currentPos?.timeBoundEnabled && (
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <DatePicker
+                    label="Time Bound Start"
+                    value={currentPos?.timeBoundStart || null}
+                    onChange={(date) => setCurrentPos({ ...currentPos, timeBoundStart: date })}
+                    slotProps={{
+                      textField: {
+                        variant: "filled",
+                        fullWidth: true,
+                        InputLabelProps: { shrink: true },
+                      },
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <DatePicker
+                    label="Time Bound End"
+                    value={currentPos?.timeBoundEnd || null}
+                    onChange={(date) => setCurrentPos({ ...currentPos, timeBoundEnd: date })}
+                    slotProps={{
+                      textField: {
+                        variant: "filled",
+                        fullWidth: true,
+                        InputLabelProps: { shrink: true },
+                      },
+                    }}
+                  />
+                </Grid>
               </Grid>
-              <Grid item xs={6}>
-                <DatePicker
-                  label="Time Bound End"
-                  value={currentPos?.timeBoundEnd || null}
-                  onChange={(date) => setCurrentPos({ ...currentPos, timeBoundEnd: date })}
-                  slotProps={{
-                    textField: {
-                      variant: "filled",
-                      fullWidth: true,
-                      InputLabelProps: { shrink: true },
-                    },
-                  }}
-                />
-              </Grid>
-            </Grid>
-          </LocalizationProvider>
+            </LocalizationProvider>
+          )}
+
           <FormControl fullWidth variant="filled">
             <InputLabel shrink>Status</InputLabel>
             <Select

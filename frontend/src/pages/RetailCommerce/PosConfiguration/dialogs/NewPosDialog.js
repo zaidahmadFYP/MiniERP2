@@ -1,5 +1,3 @@
-"use client"
-
 import {
   Dialog,
   DialogTitle,
@@ -17,11 +15,42 @@ import {
   Card,
   CardContent,
   Typography,
+  FormControlLabel,
+  Switch,
 } from "@mui/material"
 import { useTheme } from "@mui/material/styles"
+import { DatePicker } from "@mui/x-date-pickers/DatePicker"
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider"
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns"
 
 const NewPosDialog = ({ open, currentPos, setCurrentPos, handleClose, handleSave, loading }) => {
   const theme = useTheme()
+  
+  // Custom orange color
+  const orangeColor = "#f15a22"
+
+  // Handle time bound toggle
+  const handleTimeBoundToggle = (event) => {
+    const isEnabled = event.target.checked
+
+    if (isEnabled) {
+      // If enabled, set current date as time in bound
+      setCurrentPos({
+        ...currentPos,
+        timeBoundEnabled: true,
+        timeBoundStart: new Date(),
+        timeBoundEnd: null,
+      })
+    } else {
+      // If disabled, clear time bound dates
+      setCurrentPos({
+        ...currentPos,
+        timeBoundEnabled: false,
+        timeBoundStart: null,
+        timeBoundEnd: null,
+      })
+    }
+  }
 
   return (
     <Dialog
@@ -40,10 +69,11 @@ const NewPosDialog = ({ open, currentPos, setCurrentPos, handleClose, handleSave
     >
       <DialogTitle
         sx={{
-          bgcolor: theme.palette.mode === "dark" ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.02)",
+          bgcolor: theme.palette.mode === "dark" ? "rgba(241, 90, 34, 0.1)" : "rgba(241, 90, 34, 0.05)",
           borderBottom: `1px solid ${theme.palette.divider}`,
           fontWeight: 600,
           p: 2.5,
+          color: theme.palette.mode === "dark" ? "#fff" : "#333",
         }}
       >
         New POS Configuration
@@ -53,14 +83,14 @@ const NewPosDialog = ({ open, currentPos, setCurrentPos, handleClose, handleSave
           <Card
             variant="outlined"
             sx={{
-              bgcolor: theme.palette.mode === "dark" ? "rgba(25, 118, 210, 0.08)" : "#f5f8ff",
+              bgcolor: theme.palette.mode === "dark" ? "rgba(241, 90, 34, 0.08)" : "rgba(241, 90, 34, 0.05)",
               p: 2,
               borderRadius: 2,
-              borderColor: theme.palette.mode === "dark" ? "rgba(25, 118, 210, 0.3)" : theme.palette.divider,
+              borderColor: theme.palette.mode === "dark" ? "rgba(241, 90, 34, 0.3)" : theme.palette.divider,
             }}
           >
             <CardContent sx={{ p: 0 }}>
-              <Typography variant="subtitle2" sx={{ mb: 1, color: theme.palette.primary.main }}>
+              <Typography variant="subtitle2" sx={{ mb: 1, color: orangeColor }}>
                 Auto-generated Information
               </Typography>
               <Grid container spacing={2}>
@@ -130,6 +160,63 @@ const NewPosDialog = ({ open, currentPos, setCurrentPos, handleClose, handleSave
             helperText="Maximum 6 characters"
           />
 
+          {/* Time Bound Toggle */}
+          <FormControlLabel
+            control={
+              <Switch
+                checked={currentPos?.timeBoundEnabled || false}
+                onChange={handleTimeBoundToggle}
+                color="primary"
+                sx={{
+                  '& .MuiSwitch-switchBase.Mui-checked': {
+                    color: orangeColor,
+                  },
+                  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                    backgroundColor: orangeColor,
+                  },
+                }}
+              />
+            }
+            label="Enable Time Bound"
+          />
+
+          {/* Time Bound Date Pickers - Only shown when time bound is enabled */}
+          {currentPos?.timeBoundEnabled && (
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <DatePicker
+                    label="Time Bound Start"
+                    value={currentPos?.timeBoundStart || null}
+                    onChange={(date) => setCurrentPos({ ...currentPos, timeBoundStart: date })}
+                    slotProps={{
+                      textField: {
+                        variant: "filled",
+                        fullWidth: true,
+                        InputLabelProps: { shrink: true },
+                        helperText: "Auto-set to current date",
+                      },
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <DatePicker
+                    label="Time Bound End"
+                    value={currentPos?.timeBoundEnd || null}
+                    onChange={(date) => setCurrentPos({ ...currentPos, timeBoundEnd: date })}
+                    slotProps={{
+                      textField: {
+                        variant: "filled",
+                        fullWidth: true,
+                        InputLabelProps: { shrink: true },
+                      },
+                    }}
+                  />
+                </Grid>
+              </Grid>
+            </LocalizationProvider>
+          )}
+
           <Typography variant="body2" color="textSecondary">
             Status will be set to ONLINE by default
           </Typography>
@@ -151,12 +238,12 @@ const NewPosDialog = ({ open, currentPos, setCurrentPos, handleClose, handleSave
           variant="contained"
           disabled={loading}
           sx={{
-            bgcolor: theme.palette.success.main,
+            bgcolor: orangeColor,
             fontWeight: 500,
             textTransform: "none",
             boxShadow: "none",
             "&:hover": {
-              bgcolor: theme.palette.success.dark,
+              bgcolor: "#d94d1a", // Darker shade of the orange color
               boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
             },
           }}

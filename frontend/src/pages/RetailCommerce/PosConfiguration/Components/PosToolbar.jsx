@@ -1,5 +1,3 @@
-"use client"
-
 import {
   Box,
   Button,
@@ -30,6 +28,9 @@ const PosToolbar = ({
   handlePrint,
 }) => {
   const theme = useTheme()
+  
+  // Custom orange color
+  const orangeColor = "#f15a22"
 
   return (
     <Box
@@ -73,13 +74,13 @@ const PosToolbar = ({
           disabled={loading}
           sx={{
             ml: 1,
-            bgcolor: theme.palette.success.main,
-            color: theme.palette.success.contrastText,
+            bgcolor: orangeColor,
+            color: "#ffffff",
             textTransform: "none",
             fontWeight: 500,
             boxShadow: "none",
             "&:hover": {
-              bgcolor: theme.palette.success.dark,
+              bgcolor: "#d94d1a", // Darker shade of the orange color
               boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
             },
           }}
@@ -161,7 +162,7 @@ const PosToolbar = ({
         </MenuItem>
         <MenuItem onClick={handlePrint} sx={{ fontSize: "14px" }}>
           <ListItemIcon>
-            <Print fontSize="small" sx={{ color: theme.palette.text.secondary }} />
+            <Print fontSize="small" sx={{ color: orangeColor }} />
           </ListItemIcon>
           Print
         </MenuItem>
@@ -192,7 +193,7 @@ const PosToolbar = ({
               borderColor: theme.palette.mode === "dark" ? theme.palette.grey[700] : theme.palette.grey[400],
             },
             "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-              borderColor: theme.palette.primary.main,
+              borderColor: orangeColor,
               borderWidth: "1px",
             },
           },
