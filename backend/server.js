@@ -9,6 +9,8 @@ const path = require('path');
 const axios = require('axios');
 const transactionRoutes = require('./routes/transaction');
 const userRoutes = require('./routes/user');
+const posconfigRoutes = require('./routes/posconfigRoutes');
+
 
 const app = express();
 const PORT = process.env.PORT;
@@ -32,9 +34,11 @@ db.once('open', async () => {
   gridfsBucket = new GridFSBucket(db.db, { bucketName: 'uploads' });
   console.log('GridFS initialized');
 });
+
 // Routes
 app.use('/api/auth', userRoutes);
 app.use('/api/transactions', transactionRoutes);
+app.use('/api/posconfig', posconfigRoutes);
 
 // Start Server
 app.listen(PORT, () => {

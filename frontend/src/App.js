@@ -23,6 +23,7 @@ import RetailCommerce from "./pages/RetailCommerce/RetailCommerce";
 // User Management Imports
 import ActiveUsers from "./pages/UserManagement/ActiveUsers";
 import StoreTransaction from "./pages/RetailCommerce/StoreTransaction/StoreTransaction";
+import PosConfiguration from "./pages/RetailCommerce/PosConfiguration/PosConfiguration";
 
 function App() {
   // ------------ Authentication ------------
@@ -312,6 +313,17 @@ function App() {
             element={
               isAuthenticated ? (
                 <StoreTransaction user={user} />
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+
+          <Route
+            path="/RetailCommerce/PosConfiguration"
+            element={
+              isAuthenticated ? (
+                <PosConfiguration user={user} />
               ) : (
                 <Navigate to="/login" />
               )

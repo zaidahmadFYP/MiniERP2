@@ -1,455 +1,436 @@
-import React, { useState, useEffect,useCallback  } from 'react';
-import Grid from '@mui/material/Grid';
-import Typography from '@mui/material/Typography';
-import Box from '@mui/material/Box';
-import { useTheme } from '@mui/material/styles';
-import MainContentWrapper from './MainContentWrapper';
-import SearchBar from './SearchBar';
-import AddFileButton from './AddFileButton';
-import FileTable from './FileTable';
-import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogContentText from '@mui/material/DialogContentText';
-import DialogTitle from '@mui/material/DialogTitle';
-import Button from '@mui/material/Button';
-import IconButton from '@mui/material/IconButton';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import MenuItem from '@mui/material/MenuItem';
-import Select from '@mui/material/Select';
-import FormControl from '@mui/material/FormControl';
-import Snackbar from '@mui/material/Snackbar';
-import MuiAlert from '@mui/material/Alert';
-import HoverPopoverButton from './HoverPopoverButton';
+"use client"
 
-const PosConfiguration = ({ open, user }) => {
-  const theme = useTheme();
-  const headingColor = theme.palette.mode === 'dark' ? '#f15a22' : '#000000';
-  const [files, setFiles] = useState([]); // State for files
-  const [searchQuery, setSearchQuery] = useState(''); // State for search query
-  // const [isDialogOpen, setIsDialogOpen] = useState(false); // State for dialogs
-  // const [dialogMessage, setDialogMessage] = useState(''); // State for messages
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false); // State for delete confirmation dialog
-  const [fileToDelete, setFileToDelete] = useState(null); // Store file to delete
-  const [loading, setLoading] = useState(false); // State for managing table refresh
-  const [zones, setZones] = useState([]); // State for zones
-  const [branches, setBranches] = useState([]); // State for branches
-  const [selectedZone, setSelectedZone] = useState(user?.role === 'Admin' ? '' : user?.zone); // State for selected zone
-  const [selectedBranch, setSelectedBranch] = useState(user?.role === 'Admin' ? '' : user?.branch); // State for selected branch
-  const [snackbarOpen, setSnackbarOpen] = useState(false); // State for snackbar
-  const [snackbarMessage, setSnackbarMessage] = useState(''); // State for snackbar message
-  const [snackbarSeverity, setSnackbarSeverity] = useState('success'); // State for snackbar severity
+import { useState, useEffect } from "react"
+import { Card, Snackbar, Alert } from "@mui/material"
+import { useTheme } from "@mui/material/styles"
+import MainContentWrapper from "./MainContentWrapper"
+import PosToolbar from "./Components/PosToolbar"
+import PosHeader from "./Components/PosHeader"
+import PosTable from "./Components/PosTable"
+import PosStatusBar from "./Components/PosStatusBar"
+import EditPosDialog from "./dialogs/EditPosDialog"
+import NewPosDialog from "./dialogs/NewPosDialog"
+import DeletePosDialog from "./dialogs/DeletePosDialog"
+import {
+  getAllPosConfigs,
+  createPosConfig,
+  updatePosConfig,
+  formatPosConfigForBackend,
+  formatPosConfigForFrontend,
+} from "./utils/posConfigService"
 
-  // Supported file types
-  // const supportedFileTypes = [
-  //   'image/png',
-  //   'image/jpeg',
-  //   'image/webp',
-  //   'application/pdf',
-  //   'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
-  //   'application/vnd.ms-excel', // .xls
-  //   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-  //   'text/csv',
-  //   'application/txt'
-  // ];
+const PosConfiguration = ({ open = true }) => {
+  const theme = useTheme()
+  const [posData, setPosData] = useState([])
+  const [selected, setSelected] = useState([])
+  const [optionsAnchorEl, setOptionsAnchorEl] = useState(null)
+  const [filterText, setFilterText] = useState("")
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [newDialogOpen, setNewDialogOpen] = useState(false)
+  const [currentPos, setCurrentPos] = useState(null)
+  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [visiblePasswords, setVisiblePasswords] = useState({})
 
-  // Fetch zones from the server
-  const fetchZones = async () => {
-    try {
-      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/zones`);
-      const zonesData = await response.json();
-      setZones(zonesData);
-    } catch (error) {
-      console.error('Error fetching zones:', error);
-    }
-  };
-
-  // Fetch branches for the selected zone
-  const fetchBranches = async (zoneName) => {
-    try {
-      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/zones/${zoneName}/branches`);
-      const branchesData = await response.json();
-      setBranches(branchesData);
-    } catch (error) {
-      console.error('Error fetching branches:', error);
-    }
-  };
-
-  // Fetch the files for the specified zone and branch
-  const fetchFiles = useCallback(async () => {
-    if (!selectedZone || !selectedBranch) return;
-  
-    setLoading(true);
-    try {
-      const encodedZone = encodeURIComponent(selectedZone.trim());
-      const encodedBranch = encodeURIComponent(selectedBranch.trim());
-  
-      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/files/approvals-outerspaces-facilities/${encodedZone}/${encodedBranch}`);
-  
-      if (response.ok) {
-        const filesData = await response.json();
-        setFiles(filesData);
-      } else if (response.status === 404) {
-        console.error('No files found for this zone and branch.');
-        setFiles([]);
-      } else {
-        console.error('Error fetching files:', response.statusText);
-      }
-    } catch (error) {
-      console.error('Error fetching files:', error);
-    }
-    setLoading(false);
-  }, [selectedZone, selectedBranch]);
-
+  // Fetch POS configurations on component mount
   useEffect(() => {
-    fetchZones(); // Fetch zones when component mounts
-  }, []);
+    fetchPosConfigurations()
+  }, [])
 
-  useEffect(() => {
-    if (selectedZone) {
-      fetchBranches(selectedZone); // Fetch branches when a zone is selected
-    }
-  }, [selectedZone]);
-
-  useEffect(() => {
-    if (selectedZone && selectedBranch) {
-      fetchFiles(); // Fetch files when component mounts or when zone/branch changes
-    }
-  }, [selectedZone, selectedBranch,fetchFiles]);
-
-  // Handle file upload
-  const handleFileSelect = async (file) => {
-    if (file) {
-      // Normalize filename to avoid spaces
-      const normalizedFileName = file.name.replace(/\s+/g, '_');
-
-      const formData = new FormData();
-      formData.append('file', new File([file], normalizedFileName, { type: file.type }));
-
-      try {
-        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/files/approvals-outerspaces-facilities/${encodeURIComponent(selectedZone)}/${encodeURIComponent(selectedBranch)}`, {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (response.ok) {
-          fetchFiles(); // Re-fetch files after upload to update the UI
-          setSnackbarMessage(`File "${normalizedFileName}" has been added successfully.`);
-          setSnackbarSeverity('success');
-          setSnackbarOpen(true);
-        setSnackbarOpen(true); // Ensure snackbar triggers after deletion
-        } else {
-          const errorMessage = await response.text();
-          console.error('Error uploading file:', response.statusText, errorMessage);
-          setSnackbarMessage('Failed to upload file.');
-          setSnackbarSeverity('error');
-          setSnackbarOpen(true);
-        }
-      } catch (error) {
-        console.error('Error uploading file:', error);
-        setSnackbarMessage('Failed to upload file.');
-        setSnackbarSeverity('error');
-        setSnackbarOpen(true);
-      }
-    }
-  };
-
-  // Open confirmation dialog before deletion
-  const openDeleteDialog = (filename) => {
-    setFileToDelete(filename);
-    setConfirmDeleteOpen(true); // Open the delete confirmation dialog
-  };
-
-  // Handle delete confirmation
-  const handleDeleteConfirm = async () => {
-    setConfirmDeleteOpen(false); // Close the confirmation dialog immediately
-  
-    const trimmedFilename = fileToDelete.trim();
-    const encodedFilename = encodeURIComponent(trimmedFilename);
-    const deleteUrl = `${process.env.REACT_APP_API_BASE_URL}/files/approvals-outerspaces-facilities/${encodeURIComponent(selectedZone)}/${encodeURIComponent(selectedBranch)}/${encodedFilename}`;
-  
-    // Show snackbar right away with success message
-    setSnackbarMessage(`File "${trimmedFilename}" is being deleted, Please Click Refresh Icon`);
-    setSnackbarSeverity('info');
-    setSnackbarOpen(true);
-  
+  // Fetch POS configurations from the backend
+  const fetchPosConfigurations = async () => {
     try {
-      console.log('DELETE URL:', deleteUrl);  // Debugging log
-  
-      const response = await fetch(deleteUrl, { method: 'DELETE' });
-  
-      if (response.ok) {
-        setFiles((prevFiles) =>
-          prevFiles.filter((file) => file.filename !== trimmedFilename)
-        );
-  
-        // Update snackbar to success after delete
-        setSnackbarMessage(`File "${trimmedFilename}" has been deleted successfully.`);
-        setSnackbarSeverity('success');
-      } else {
-        const errorMessage = await response.text();
-        console.error('Failed to delete file:', response.statusText, errorMessage);
-  
-        // Update snackbar to error in case of failure
-        setSnackbarMessage('Failed to delete file.');
-        setSnackbarSeverity('error');
-      }
-    } catch (error) {
-      console.error('Error deleting file:', error);
-      setSnackbarMessage('Error occurred while deleting the file.');
-      setSnackbarSeverity('error');
+      setLoading(true)
+      setError(null)
+      const data = await getAllPosConfigs()
+      // Transform backend data to frontend format
+      const formattedData = data.map((item) => formatPosConfigForFrontend(item))
+      setPosData(formattedData)
+    } catch (err) {
+      console.error("Failed to fetch POS configurations:", err)
+      setError("Failed to load POS configurations. Please try again.")
+      setSnackbar({
+        open: true,
+        message: "Failed to load POS configurations",
+        severity: "error",
+      })
+    } finally {
+      setLoading(false)
     }
-  
-    setSnackbarOpen(true); // Ensure snackbar opens in all cases
-    setFileToDelete(null); // Clear the file to delete after the operation
-  };
+  }
 
-  // Handle canceling the deletion
-  const handleDeleteCancel = () => {
-    setConfirmDeleteOpen(false); // Close the confirmation dialog
-    setFileToDelete(null); // Reset the file to delete
-  };
+  // Filter data based on search text
+  const filteredData = posData.filter(
+    (row) =>
+      row.id.toLowerCase().includes(filterText.toLowerCase()) ||
+      row.posId.toLowerCase().includes(filterText.toLowerCase()) ||
+      row.authorityType.toLowerCase().includes(filterText.toLowerCase()) ||
+      row.status.toLowerCase().includes(filterText.toLowerCase()),
+  )
 
-  // Handle Dialog Close
-  // const handleDialogClose = () => {
-  //   setIsDialogOpen(false);
-  // };
+  // Handle row selection
+  const handleSelectRow = (id) => {
+    const selectedIndex = selected.indexOf(id)
+    let newSelected = []
 
-  // Handle Snackbar Close
-  const handleSnackbarClose = (event, reason) => {
-    console.log('Snackbar closed with reason:', reason); // Debugging log
-    if (reason === 'clickaway') return;
-    setSnackbarOpen(false);
-  };
-  // Filter files based on search query (filename or fileNumber)
-  const filteredFiles = files.filter(file =>
-    file?.filename?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    file?.fileNumber?.toLowerCase().includes(searchQuery.toLowerCase())  // Added fileNumber to search filter
-  );
+    if (selectedIndex === -1) {
+      newSelected = [...selected, id]
+    } else {
+      newSelected = selected.filter((item) => item !== id)
+    }
+
+    setSelected(newSelected)
+  }
+
+  // Handle select all
+  const handleSelectAll = (event) => {
+    if (event.target.checked) {
+      const newSelected = filteredData.map((row) => row.id)
+      setSelected(newSelected)
+      return
+    }
+    setSelected([])
+  }
+
+  // Options menu handlers
+  const handleOptionsClick = (event) => {
+    setOptionsAnchorEl(event.currentTarget)
+  }
+
+  const handleOptionsClose = () => {
+    setOptionsAnchorEl(null)
+  }
+
+  // Toggle password visibility
+  const togglePasswordVisibility = (id) => {
+    setVisiblePasswords((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }))
+  }
+
+  // Copy password to clipboard
+  const copyPasswordToClipboard = (password, id) => {
+    if (!password) return
+
+    navigator.clipboard.writeText(password).then(
+      () => {
+        setSnackbar({
+          open: true,
+          message: "Password copied to clipboard",
+          severity: "success",
+        })
+      },
+      (err) => {
+        console.error("Could not copy password: ", err)
+        setSnackbar({
+          open: true,
+          message: "Failed to copy password",
+          severity: "error",
+        })
+      },
+    )
+  }
+
+  // Edit handler
+  const handleEdit = () => {
+    if (selected.length !== 1) {
+      setSnackbar({
+        open: true,
+        message: "Please select exactly one item to edit",
+        severity: "warning",
+      })
+      return
+    }
+
+    const posToEdit = posData.find((pos) => pos.id === selected[0])
+    setCurrentPos({ ...posToEdit })
+    setEditDialogOpen(true)
+  }
+
+  // Save edit changes
+  const handleSaveEdit = async () => {
+    try {
+      setLoading(true)
+      // Format data for backend
+      const backendData = formatPosConfigForBackend(currentPos)
+
+      // Send update to backend
+      await updatePosConfig(currentPos.posId, backendData)
+
+      // Update local state
+      setPosData(posData.map((pos) => (pos.id === currentPos.id ? currentPos : pos)))
+
+      setEditDialogOpen(false)
+      setSnackbar({
+        open: true,
+        message: "POS configuration updated successfully",
+        severity: "success",
+      })
+
+      // Refresh data from backend to ensure consistency
+      fetchPosConfigurations()
+    } catch (err) {
+      console.error("Failed to update POS configuration:", err)
+      setSnackbar({
+        open: true,
+        message: err.response?.data?.error || "Failed to update POS configuration",
+        severity: "error",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // New POS handler
+  const handleNew = () => {
+    // Generate random 5-digit POS ID
+    const randomPosId = Math.floor(10000 + Math.random() * 90000).toString()
+
+    // Generate random 6-digit Registration Number
+    const randomRegNumber = Math.floor(100000 + Math.random() * 900000).toString()
+
+    // Set default dates for TimeBound
+    const now = new Date()
+    const nextYear = new Date()
+    nextYear.setFullYear(now.getFullYear() + 1)
+
+    setCurrentPos({
+      id: randomRegNumber,
+      posId: randomPosId,
+      authorityType: "PRA",
+      token: "",
+      offlineToken: "",
+      userName: "", // Optional
+      password: "", // Optional
+      timeBoundStart: now, // Required by backend
+      timeBoundEnd: nextYear, // Required by backend
+      status: "ONLINE",
+    })
+    setNewDialogOpen(true)
+  }
+
+  // Save new POS
+  const handleSaveNew = async () => {
+    try {
+      setLoading(true)
+
+      // Format data for backend
+      const backendData = formatPosConfigForBackend(currentPos)
+
+      // Ensure status is set to ONLINE for new POS configurations
+      if (!backendData.POSStatus) {
+        backendData.POSStatus = "ONLINE"
+      }
+
+      // Send to backend
+      await createPosConfig(backendData)
+
+      setNewDialogOpen(false)
+      setSnackbar({
+        open: true,
+        message: "New POS configuration added successfully",
+        severity: "success",
+      })
+
+      // Refresh data from backend
+      fetchPosConfigurations()
+    } catch (err) {
+      console.error("Failed to create POS configuration:", err)
+      setSnackbar({
+        open: true,
+        message: err.response?.data?.error || "Failed to create POS configuration",
+        severity: "error",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Delete handler - Note: Backend doesn't have a delete endpoint, so this is just UI functionality
+  const handleDelete = () => {
+    if (selected.length === 0) {
+      setSnackbar({
+        open: true,
+        message: "Please select at least one item to delete",
+        severity: "warning",
+      })
+      return
+    }
+    setDeleteDialogOpen(true)
+  }
+
+  // Confirm delete - This would need a backend endpoint to be fully implemented
+  const handleConfirmDelete = () => {
+    // This is just UI functionality since there's no delete endpoint
+    setPosData(posData.filter((pos) => !selected.includes(pos.id)))
+    setSelected([])
+    setDeleteDialogOpen(false)
+    setSnackbar({
+      open: true,
+      message: `${selected.length} item(s) deleted successfully`,
+      severity: "success",
+    })
+  }
+
+  // Export data
+  const handleExport = () => {
+    // Create CSV content
+    const headers = ["Register Number", "POS ID", "Authority Type", "Status", "Username", "Password", "Time Bound"]
+    const csvContent = [
+      headers.join(","),
+      ...filteredData.map((row) =>
+        [row.id, row.posId, row.authorityType, row.status, row.userName, row.password, row.timeBound].join(","),
+      ),
+    ].join("\n")
+
+    // Create download link
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.setAttribute("href", url)
+    link.setAttribute("download", "pos_configurations.csv")
+    link.style.visibility = "hidden"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    setSnackbar({
+      open: true,
+      message: "Data exported successfully",
+      severity: "success",
+    })
+    handleOptionsClose()
+  }
+
+  // Print data
+  const handlePrint = () => {
+    window.print()
+    handleOptionsClose()
+  }
+
+  // Refresh data
+  const handleRefresh = () => {
+    fetchPosConfigurations()
+    handleOptionsClose()
+  }
+
+  // Close snackbar
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false })
+  }
 
   return (
     <MainContentWrapper open={open}>
-    {/* Heading Section */}
-    <Typography
-      variant="h4"
-      sx={{
-        color: headingColor,
-        mb: 4,
-        textAlign: 'center',
-        fontSize: '30px',
-        fontFamily: 'TanseekModernW20',
-        borderBottom: '2px solid #ccc',
-        paddingBottom: '10px',
-      }}
-    >
-      LICENSES/OUTER SPACES/FACILITIES
-    </Typography>
-    <Typography
-      variant="subtitle1"
-      sx={{
-        textAlign: 'center',
-        color: theme.palette.mode === 'dark' ? '#f5f5f5' : '#333',
-        mb: 2,
-        transition: 'color 0.3s ease', // Transition for color change
-      }}
-    >
-      Your Branch: {user?.branch}
-    </Typography>
-  
-    {/* Box to contain the search bar, Refresh button, Zone and Branch Select, and Add File button */}
-    <Box
-      sx={{
-        width: '100%',
-        backgroundColor: theme.palette.mode === 'dark' ? '#333' : '#fff',
-        padding: '20px',
-        borderRadius: '8px',
-        transition: 'background-color 0.3s ease', // Transition for background color change
-      }}
-    >
-      <Grid container spacing={2} sx={{ mb: 3 }} alignItems="center">
-        {user?.role === 'Admin' && (
-          <>
-            <Grid item xs={12} sm={3}>
-              <FormControl fullWidth>
-                <Select
-                  value={selectedZone}
-                  onChange={(e) => setSelectedZone(e.target.value)}
-                  displayEmpty
-                >
-                  <MenuItem value="" disabled>
-                    Zone
-                  </MenuItem>
-                  {zones.map((zone) => (
-                    <MenuItem key={zone.zoneName} value={zone.zoneName}>
-                      {zone.zoneName}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-  
-            <Grid item xs={12} sm={3}>
-              <FormControl fullWidth>
-                <Select
-                  value={selectedBranch}
-                  onChange={(e) => setSelectedBranch(e.target.value)}
-                  displayEmpty
-                  disabled={!selectedZone}
-                >
-                  <MenuItem value="" disabled>
-                    Branch
-                  </MenuItem>
-                  {branches.map((branch) => (
-                    <MenuItem key={branch} value={branch}>
-                      {branch}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-  
-            <Grid item xs={12} sm={3}>
-              <FormControl fullWidth>
-                <SearchBar
-                  searchQuery={searchQuery}
-                  setSearchQuery={setSearchQuery}
-                  placeholder="Search files..."
-                  style={{ width: '100%' }}
-                />
-              </FormControl>
-            </Grid>
-  
-            <Grid
-              item
-              xs={12} sm={3}
-              sx={{
-                padding: 0,
-                textAlign: 'right',
-                display: 'flex',
-                justifyContent: 'flex-end',
-                gap: '15px',
-              }}
-            >
-              <AddFileButton onFileSelect={handleFileSelect} />
-              <IconButton onClick={fetchFiles} sx={{ color: '#f15a22' }}>
-                <RefreshIcon />
-              </IconButton>
-              <HoverPopoverButton />
-            </Grid>
-          </>
-        )}
-  
-        {user?.role !== 'Admin' && (
-          <>
-            <Grid item xs={9}>
-              <FormControl fullWidth>
-                <SearchBar
-                  searchQuery={searchQuery}
-                  setSearchQuery={setSearchQuery}
-                  placeholder="Search files..."
-                  style={{ width: '100%' }} // Full width for mobile
-                />
-              </FormControl>
-            </Grid>
-  
-            <Grid
-              item
-              xs={3}
-              sx={{
-                padding: 0,
-                textAlign: 'right',
-                display: 'flex',
-                justifyContent: 'flex-end',
-                gap: '15px',
-              }}
-            >
-              <IconButton onClick={fetchFiles} sx={{ color: '#f15a22' }}>
-                <RefreshIcon />
-              </IconButton>
-            </Grid>
-          </>
-        )}
-      </Grid>
-  
-      {/* File Table */}
-      <Box
+      <Card
+        elevation={0}
         sx={{
-          width: '100%',
-          maxHeight: '500px',
-          overflowY: files.length > 5 ? 'scroll' : 'unset',
-          backgroundColor: theme.palette.mode === 'dark' ? '#222' : '#fafafa',
-          color: theme.palette.mode === 'dark' ? '#f5f5f5' : '#333',
-          padding: '20px',
-          borderRadius: '8px',
-          transition: 'background-color 0.3s ease, color 0.3s ease', // Transition for background and text color
+          borderRadius: 2,
+          overflow: "hidden",
+          width: "100%",
+          maxWidth: "100%",
+          border: `1px solid ${theme.palette.divider}`,
+          bgcolor: theme.palette.background.paper,
         }}
       >
-        {loading ? (
-          <Typography>Loading...</Typography>
-        ) : files.length === 0 ? (
-          <Typography>No Files Stored</Typography>
-        ) : (
-          <FileTable files={filteredFiles} onDelete={openDeleteDialog} user={user} />
-        )}
-      </Box>
-    </Box>
-  
-    {/* Confirmation Dialog for Deletion */}
-    <Dialog
-      open={confirmDeleteOpen}
-      onClose={handleDeleteCancel}
-      PaperProps={{
-        style: {
-          backgroundColor: theme.palette.mode === 'dark' ? '#333' : '#fff',
-          color: theme.palette.mode === 'dark' ? '#f5f5f5' : '#333',
-          transition: 'background-color 0.3s ease, color 0.3s ease', // Smooth transition for dialog colors
-        },
-      }}
-    >
-      <DialogTitle>Delete Confirmation</DialogTitle>
-      <DialogContent>
-        <DialogContentText>
-          Are you sure you want to delete the file "{fileToDelete}"?
-        </DialogContentText>
-      </DialogContent>
-      <DialogActions>
-        <Button
-          onClick={handleDeleteCancel}
-          sx={{
-            backgroundColor: '#d14e1d',
-            color: '#fff',
-            '&:hover': { backgroundColor: '#c43d17' },
-          }}
-        >
-          No
-        </Button>
-        <Button
-          onClick={handleDeleteConfirm}
-          sx={{
-            backgroundColor: '#f15a22',
-            color: '#fff',
-            '&:hover': { backgroundColor: '#d14e1d' },
-          }}
-        >
-          Yes
-        </Button>
-      </DialogActions>
-    </Dialog>
-  
-    {/* Snackbar for file operations */}
-    <Snackbar
-      open={snackbarOpen}
-      autoHideDuration={6000}
-      onClose={handleSnackbarClose}
-      anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-    >
-      <MuiAlert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
-        {snackbarMessage}
-      </MuiAlert>
-    </Snackbar>
-  </MainContentWrapper>
-  
-  );
-};
+        {/* Navigation Bar */}
+        <PosToolbar
+          selected={selected}
+          loading={loading}
+          filterText={filterText}
+          setFilterText={setFilterText}
+          handleEdit={handleEdit}
+          handleNew={handleNew}
+          handleDelete={handleDelete}
+          optionsAnchorEl={optionsAnchorEl}
+          handleOptionsClick={handleOptionsClick}
+          handleOptionsClose={handleOptionsClose}
+          handleRefresh={handleRefresh}
+          handleExport={handleExport}
+          handlePrint={handlePrint}
+        />
 
-export default PosConfiguration;
+        {/* Title */}
+        <PosHeader />
+
+        {/* Table */}
+        <PosTable
+          filteredData={filteredData}
+          loading={loading}
+          error={error}
+          selected={selected}
+          handleSelectAll={handleSelectAll}
+          handleSelectRow={handleSelectRow}
+          visiblePasswords={visiblePasswords}
+          togglePasswordVisibility={togglePasswordVisibility}
+          copyPasswordToClipboard={copyPasswordToClipboard}
+          fetchPosConfigurations={fetchPosConfigurations}
+        />
+
+        {/* Status bar */}
+        <PosStatusBar selected={selected} filteredData={filteredData} />
+      </Card>
+
+      {/* Edit Dialog */}
+      <EditPosDialog
+        open={editDialogOpen}
+        currentPos={currentPos}
+        setCurrentPos={setCurrentPos}
+        handleClose={() => setEditDialogOpen(false)}
+        handleSave={handleSaveEdit}
+        loading={loading}
+      />
+
+      {/* New Dialog */}
+      <NewPosDialog
+        open={newDialogOpen}
+        currentPos={currentPos}
+        setCurrentPos={setCurrentPos}
+        handleClose={() => setNewDialogOpen(false)}
+        handleSave={handleSaveNew}
+        loading={loading}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <DeletePosDialog
+        open={deleteDialogOpen}
+        handleClose={() => setDeleteDialogOpen(false)}
+        handleConfirmDelete={handleConfirmDelete}
+        loading={loading}
+        selectedCount={selected.length}
+      />
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={5000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={snackbar.severity}
+          sx={{
+            width: "100%",
+            boxShadow: theme.shadows[3],
+            borderRadius: 2,
+            bgcolor:
+              theme.palette.mode === "dark"
+                ? snackbar.severity === "success"
+                  ? "rgba(46, 125, 50, 0.9)"
+                  : snackbar.severity === "error"
+                    ? "rgba(211, 47, 47, 0.9)"
+                    : "rgba(237, 108, 2, 0.9)"
+                : undefined,
+          }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </MainContentWrapper>
+  )
+}
+
+export default PosConfiguration

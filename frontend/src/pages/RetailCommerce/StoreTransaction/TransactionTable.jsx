@@ -3,7 +3,7 @@ import { Box, Paper, Typography, IconButton, Snackbar } from "@mui/material"
 import { Refresh, FilterList, KeyboardArrowDown } from "@mui/icons-material"
 
 // Import components
-import TransactionList from "./cCmponents/TransactionList"
+import TransactionList from "./Components/TransactionList"
 import TransactionDetails from "./Components/TransactionDetails"
 import SearchBar from "./Components/SearchBar"
 import FilterDialog from "./Components/FilterDialog"

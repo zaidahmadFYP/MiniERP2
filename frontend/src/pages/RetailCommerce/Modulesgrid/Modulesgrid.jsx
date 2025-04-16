@@ -16,7 +16,7 @@ const modules = [
   {
     name: 'POS Configuration',
     image: '/images/2.png',
-    path: '/pos-configuration',
+    path: '/RetailCommerce/PosConfiguration/',
   },
   {
     name: 'Reporting',
