@@ -34,4 +34,5 @@ const PosHeader = () => {
   )
 }
 
+
 export default PosHeader
