@@ -25,6 +25,7 @@ import ActiveUsers from "./pages/UserManagement/ActiveUsers";
 import StoreTransaction from "./pages/RetailCommerce/StoreTransaction/StoreTransaction";
 import PosConfiguration from "./pages/RetailCommerce/PosConfiguration/PosConfiguration";
 import Reporting from "./pages/RetailCommerce/Reporting/Reporting";
+import FinanceAndSales from "./pages/Finance and Sales/FinanceAndSales";
 
 function App() {
   // ------------ Authentication ------------
@@ -341,6 +342,23 @@ function App() {
               )
             }
           />
+
+          {/* ------------Finance and Sales ----------- */}
+
+          <Route
+            path="/FinanceandSales"
+            element={
+              isAuthenticated ? (
+                <FinanceAndSales user={user} />
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+
+          
+
+
 
           {/* ------------ User Management ------------ */}
           <Route
