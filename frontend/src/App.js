@@ -24,6 +24,7 @@ import RetailCommerce from "./pages/RetailCommerce/RetailCommerce";
 import ActiveUsers from "./pages/UserManagement/ActiveUsers";
 import StoreTransaction from "./pages/RetailCommerce/StoreTransaction/StoreTransaction";
 import PosConfiguration from "./pages/RetailCommerce/PosConfiguration/PosConfiguration";
+import Reporting from "./pages/RetailCommerce/Reporting/Reporting";
 
 function App() {
   // ------------ Authentication ------------
@@ -324,6 +325,17 @@ function App() {
             element={
               isAuthenticated ? (
                 <PosConfiguration user={user} />
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+
+          <Route
+            path="/RetailCommerce/Reporting/"
+            element={
+              isAuthenticated ? (
+                <Reporting user={user} />
               ) : (
                 <Navigate to="/login" />
               )

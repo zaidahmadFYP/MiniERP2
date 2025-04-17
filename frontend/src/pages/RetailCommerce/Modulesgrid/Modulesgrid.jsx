@@ -21,7 +21,7 @@ const modules = [
   {
     name: 'Reporting',
     image: '/images/3.png',
-    path: '/reporting',
+    path: '/RetailCommerce/Reporting/',
   },
 ];
 

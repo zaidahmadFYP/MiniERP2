@@ -5,7 +5,7 @@ import { styled } from '@mui/material/styles';
 const MainContentWrapper = styled(Box)(({ theme, open }) => ({
   flexGrow: 1,
   padding: theme.spacing(4),
-  marginLeft: open ? '240px' : '60px', // Adjust for mini/full drawer state
+  marginLeft: open ? '60px' : '60px', // Adjust for mini/full drawer state
   marginTop: '64px', // Adjust for AppBar height
   transition: theme.transitions.create(['margin'], {
     easing: theme.transitions.easing.sharp,

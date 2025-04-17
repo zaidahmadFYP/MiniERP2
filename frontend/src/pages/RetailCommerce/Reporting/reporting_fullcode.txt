@@ -1,0 +1,1567 @@
+"use client"
+
+import React, { useState, useEffect } from "react"
+import axios from "axios"
+import {
+  Box,
+  Container,
+  Grid,
+  Paper,
+  Typography,
+  Card,
+  CardContent,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Chip,
+  TextField,
+  MenuItem,
+  Button,
+  CircularProgress,
+  IconButton,
+  Tooltip,
+  Alert,
+  Tabs,
+  Tab,
+  LinearProgress,
+  Divider,
+  useTheme,
+  alpha,
+} from "@mui/material"
+import {
+  PointOfSale,
+  Refresh,
+  TrendingUp,
+  Payment,
+  BarChart,
+  Inventory,
+  FilterList,
+  Download,
+  ArrowUpward,
+  ArrowDownward,
+  CalendarMonth,
+  CreditCard,
+  AccountBalance,
+  ShoppingCart,
+} from "@mui/icons-material"
+import { format, subDays, isWithinInterval } from "date-fns"
+import MainContentWrapper from "./MainContentWrapper"
+
+// Error boundary component
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false }
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true }
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("Error caught by boundary:", error, errorInfo)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Paper sx={{ p: 4, textAlign: "center", borderRadius: 2, boxShadow: 3 }}>
+          <Typography variant="h6" color="error" gutterBottom>
+            Something went wrong with this component.
+          </Typography>
+          <Button variant="contained" color="primary" sx={{ mt: 2 }} onClick={() => this.setState({ hasError: false })}>
+            Try Again
+          </Button>
+        </Paper>
+      )
+    }
+
+    return this.props.children
+  }
+}
+
+// Simple bar chart component
+const SimpleBarChart = ({ data, valueKey, labelKey, color = "#8884d8" }) => {
+  const theme = useTheme()
+  const maxValue = Math.max(...data.map((item) => item[valueKey]))
+
+  return (
+    <Box sx={{ width: "100%", px: 2 }}>
+      {data.map((item, index) => (
+        <Box key={index} sx={{ mb: 3 }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+            <Typography variant="body2" fontWeight="medium">
+              {item[labelKey]}
+            </Typography>
+            <Typography variant="body2" fontWeight="bold">
+              {typeof item[valueKey] === "number" ? item[valueKey].toFixed(2) : item[valueKey]}
+            </Typography>
+          </Box>
+          <LinearProgress
+            variant="determinate"
+            value={(item[valueKey] / maxValue) * 100}
+            sx={{
+              height: 12,
+              borderRadius: 6,
+              backgroundColor: alpha("#f15a22", theme.palette.mode === "dark" ? 0.2 : 0.1),
+              "& .MuiLinearProgress-bar": {
+                backgroundColor: color,
+                borderRadius: 6,
+              },
+            }}
+          />
+        </Box>
+      ))}
+    </Box>
+  )
+}
+
+// Simple pie chart component using divs
+const SimplePieChart = ({ data, valueKey, labelKey }) => {
+  const theme = useTheme()
+  const total = data.reduce((sum, item) => sum + item[valueKey], 0)
+  const colors = ["#4361ee", "#3a0ca3", "#7209b7", "#f72585", "#4cc9f0", "#4895ef"]
+
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", p: 2 }}>
+      <Box
+        sx={{
+          display: "flex",
+          flexWrap: "wrap",
+          justifyContent: "center",
+          gap: 4,
+          mb: 4,
+        }}
+      >
+        {data.map((item, index) => (
+          <Box
+            key={index}
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              transition: "transform 0.2s ease-in-out",
+              "&:hover": {
+                transform: "scale(1.05)",
+              },
+            }}
+          >
+            <Box
+              sx={{
+                width: 100,
+                height: 100,
+                borderRadius: "50%",
+                backgroundColor: colors[index % colors.length],
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                mb: 1.5,
+                boxShadow: theme.palette.mode === "dark" ? "0 4px 20px rgba(0,0,0,0.4)" : "0 4px 20px rgba(0,0,0,0.1)",
+                position: "relative",
+                "&::after": {
+                  content: '""',
+                  position: "absolute",
+                  top: 5,
+                  left: 5,
+                  right: 5,
+                  bottom: 5,
+                  borderRadius: "50%",
+                  border: "2px solid rgba(255,255,255,0.2)",
+                },
+              }}
+            >
+              <Typography variant="h6" color="white" fontWeight="bold">
+                {Math.round((item[valueKey] / total) * 100)}%
+              </Typography>
+            </Box>
+            <Typography variant="body2" align="center" sx={{ maxWidth: 120 }}>
+              {item[labelKey]}
+            </Typography>
+          </Box>
+        ))}
+      </Box>
+      <Divider sx={{ width: "100%", mb: 3 }} />
+      <Box sx={{ width: "100%" }}>
+        {data.map((item, index) => (
+          <Box key={index} sx={{ display: "flex", justifyContent: "space-between", mb: 1.5, alignItems: "center" }}>
+            <Box sx={{ display: "flex", alignItems: "center" }}>
+              <Box
+                sx={{
+                  width: 16,
+                  height: 16,
+                  backgroundColor: colors[index % colors.length],
+                  mr: 1.5,
+                  borderRadius: 1,
+                }}
+              />
+              <Typography variant="body2">{item[labelKey]}</Typography>
+            </Box>
+            <Typography variant="body2" fontWeight="medium">
+              {typeof item[valueKey] === "number" ? item[valueKey].toFixed(2) : item[valueKey]}
+            </Typography>
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  )
+}
+
+// Simple line chart component
+const SimpleLineChart = ({ data, xKey, yKey, label }) => {
+  const theme = useTheme()
+
+  return (
+    <Box sx={{ p: 2 }}>
+      <Typography variant="subtitle1" gutterBottom fontWeight="medium">
+        {label || "Trend"}
+      </Typography>
+      <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+        <Table size="small">
+          <TableHead>
+            <TableRow sx={{ backgroundColor: alpha("#f15a22", theme.palette.mode === "dark" ? 0.15 : 0.05) }}>
+              <TableCell sx={{ fontWeight: "bold" }}>Date</TableCell>
+              <TableCell align="right" sx={{ fontWeight: "bold" }}>
+                Value
+              </TableCell>
+              <TableCell align="right" sx={{ fontWeight: "bold" }}>
+                Change
+              </TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {data.map((item, index) => {
+              const prevValue = index > 0 ? data[index - 1][yKey] : null
+              const change = prevValue !== null ? item[yKey] - prevValue : 0
+              const changePercent = prevValue !== null && prevValue !== 0 ? (change / prevValue) * 100 : 0
+
+              return (
+                <TableRow key={index} hover>
+                  <TableCell>{item[xKey]}</TableCell>
+                  <TableCell align="right">{item[yKey].toFixed(2)}</TableCell>
+                  <TableCell
+                    align="right"
+                    sx={{
+                      color: change > 0 ? "success.main" : change < 0 ? "error.main" : "text.secondary",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "flex-end",
+                    }}
+                  >
+                    {change !== 0 &&
+                      (change > 0 ? (
+                        <ArrowUpward fontSize="small" sx={{ mr: 0.5 }} />
+                      ) : (
+                        <ArrowDownward fontSize="small" sx={{ mr: 0.5 }} />
+                      ))}
+                    {change !== 0 ? `${Math.abs(changePercent).toFixed(1)}%` : "-"}
+                  </TableCell>
+                </TableRow>
+              )
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Box>
+  )
+}
+
+const Reporting = ({ open = true }) => {
+  const theme = useTheme()
+  const [transactions, setTransactions] = useState([])
+  const [posConfigs, setPosConfigs] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [tabValue, setTabValue] = useState(0)
+  const [startDate, setStartDate] = useState(subDays(new Date(), 30))
+  const [endDate, setEndDate] = useState(new Date())
+  const [filterAuthority, setFilterAuthority] = useState("all")
+  const [filterPaymentMethod, setFilterPaymentMethod] = useState("all")
+
+  // Define primary color
+  const primaryColor = "#f15a22"
+  const isDarkMode = theme.palette.mode === "dark"
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true)
+      try {
+        const [transactionsRes, posConfigsRes] = await Promise.all([
+          axios.get("http://localhost:5002/api/transactions"),
+          axios.get("http://localhost:5002/api/posconfig"),
+        ])
+
+        setTransactions(transactionsRes.data)
+        setPosConfigs(posConfigsRes.data)
+        setError(null)
+      } catch (err) {
+        console.error("Error fetching data:", err)
+        setError("Failed to fetch data. Please try again later.")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
+
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue)
+  }
+
+  const handleRefresh = async () => {
+    setLoading(true)
+    try {
+      const [transactionsRes, posConfigsRes] = await Promise.all([
+        axios.get("http://localhost:5002/api/transactions"),
+        axios.get("http://localhost:5002/api/posconfig"),
+      ])
+
+      setTransactions(transactionsRes.data)
+      setPosConfigs(posConfigsRes.data)
+      setError(null)
+    } catch (err) {
+      setError("Failed to refresh data. Please try again later.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Filter transactions by date range
+  const filteredTransactions = transactions.filter((transaction) => {
+    const transactionDate = new Date(transaction.date)
+    const isInDateRange = isWithinInterval(transactionDate, { start: startDate, end: endDate })
+
+    const matchesPaymentMethod = filterPaymentMethod === "all" || transaction.paymentMethod === filterPaymentMethod
+
+    return isInDateRange && matchesPaymentMethod
+  })
+
+  // Filter POS configs
+  const filteredPosConfigs = posConfigs.filter((config) => {
+    return filterAuthority === "all" || config.AuthorityType === filterAuthority
+  })
+
+  // Calculate summary statistics
+  const totalSales = filteredTransactions.reduce((sum, transaction) => sum + transaction.total, 0)
+  const averageTransactionValue = filteredTransactions.length > 0 ? totalSales / filteredTransactions.length : 0
+  const totalTransactions = filteredTransactions.length
+
+  // Group transactions by date for trend chart
+  const transactionsByDate = filteredTransactions.reduce((acc, transaction) => {
+    const date = format(new Date(transaction.date), "MM/dd/yyyy")
+    if (!acc[date]) {
+      acc[date] = { date, count: 0, total: 0 }
+    }
+    acc[date].count += 1
+    acc[date].total += transaction.total
+    return acc
+  }, {})
+
+  const trendData = Object.values(transactionsByDate).sort((a, b) => new Date(a.date) - new Date(b.date))
+
+  // Group by payment method for pie chart
+  const paymentMethodData = filteredTransactions.reduce((acc, transaction) => {
+    const method = transaction.paymentMethod
+    if (!acc[method]) {
+      acc[method] = { name: method, value: 0, count: 0 }
+    }
+    acc[method].value += transaction.total
+    acc[method].count += 1
+    return acc
+  }, {})
+
+  const paymentChartData = Object.values(paymentMethodData)
+
+  // Group POS by status
+  const posStatusCount = posConfigs.reduce((acc, config) => {
+    const status = config.POSStatus
+    if (!acc[status]) {
+      acc[status] = 0
+    }
+    acc[status] += 1
+    return acc
+  }, {})
+
+  const posStatusData = Object.entries(posStatusCount).map(([name, value]) => ({ name, value }))
+
+  // Group POS by authority
+  const authorityCount = posConfigs.reduce((acc, config) => {
+    const authority = config.AuthorityType
+    if (!acc[authority]) {
+      acc[authority] = 0
+    }
+    acc[authority] += 1
+    return acc
+  }, {})
+
+  const authorityData = Object.entries(authorityCount).map(([name, value]) => ({ name, value }))
+
+  // Get top selling items
+  const itemSales = filteredTransactions.reduce((acc, transaction) => {
+    transaction.items.forEach((item) => {
+      if (!acc[item.itemId]) {
+        acc[item.itemId] = {
+          itemId: item.itemId,
+          itemName: item.itemName,
+          totalQuantity: 0,
+          totalSales: 0,
+          occurrences: 0,
+        }
+      }
+      acc[item.itemId].totalQuantity += item.itemQuantity
+      acc[item.itemId].totalSales +=
+        item.itemQuantity * (transaction.total / transaction.items.reduce((sum, i) => sum + i.itemQuantity, 0))
+      acc[item.itemId].occurrences += 1
+    })
+    return acc
+  }, {})
+
+  const topItems = Object.values(itemSales)
+    .sort((a, b) => b.totalSales - a.totalSales)
+    .slice(0, 5)
+
+  if (loading && !transactions.length && !posConfigs.length) {
+    return (
+      <MainContentWrapper open={open}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "100vh",
+            flexDirection: "column",
+            gap: 2,
+            background: isDarkMode
+              ? "linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.2))"
+              : "linear-gradient(to bottom, rgba(255,255,255,0.8), rgba(255,255,255,0.95))",
+          }}
+        >
+          <CircularProgress size={60} thickness={4} sx={{ color: primaryColor }} />
+          <Typography variant="h5" sx={{ fontWeight: 600, color: primaryColor, mt: 2 }}>
+            Loading reporting data...
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Please wait while we fetch your dashboard information
+          </Typography>
+        </Box>
+      </MainContentWrapper>
+    )
+  }
+
+  return (
+    <MainContentWrapper open={open}>
+      <ErrorBoundary>
+        <Container maxWidth="xl" sx={{ mt: 4, mb: 6 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 4,
+              pb: 2,
+              borderBottom: `2px solid ${alpha("#f15a22", isDarkMode ? 0.3 : 0.2)}`,
+            }}
+          >
+            <Typography
+              variant="h4"
+              component="h1"
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                fontWeight: 700,
+                color: primaryColor,
+                letterSpacing: "-0.5px",
+              }}
+            >
+              <BarChart sx={{ mr: 1.5, color: primaryColor }} />
+              POS Reporting Dashboard
+            </Typography>
+            <Box>
+              <Tooltip title="Refresh data">
+                <IconButton
+                  onClick={handleRefresh}
+                  disabled={loading}
+                  sx={{
+                    mr: 1,
+                    backgroundColor: alpha("#f15a22", isDarkMode ? 0.2 : 0.1),
+                    color: primaryColor,
+                    "&:hover": {
+                      backgroundColor: alpha("#f15a22", isDarkMode ? 0.3 : 0.2),
+                    },
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  {loading ? <CircularProgress size={24} color="inherit" /> : <Refresh />}
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Export report">
+                <IconButton
+                  sx={{
+                    backgroundColor: alpha("#f15a22", isDarkMode ? 0.2 : 0.1),
+                    color: primaryColor,
+                    "&:hover": {
+                      backgroundColor: alpha("#f15a22", isDarkMode ? 0.3 : 0.2),
+                    },
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  <Download />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </Box>
+
+          {error && (
+            <Alert
+              severity="error"
+              sx={{
+                mb: 4,
+                borderRadius: 2,
+                boxShadow: isDarkMode ? "0 4px 12px rgba(0,0,0,0.2)" : "0 4px 12px rgba(0,0,0,0.05)",
+                border: "1px solid rgba(211, 47, 47, 0.2)",
+              }}
+            >
+              {error}
+            </Alert>
+          )}
+
+          <Paper
+            sx={{
+              p: 3,
+              mb: 4,
+              borderRadius: 2,
+              boxShadow: isDarkMode ? "0 4px 20px rgba(0,0,0,0.2)" : "0 4px 20px rgba(0,0,0,0.08)",
+              background: isDarkMode
+                ? "linear-gradient(to right, rgba(30,30,30,0.4), rgba(30,30,30,0.2))"
+                : "linear-gradient(to right, rgba(255,255,255,0.9), rgba(255,255,255,1))",
+              border: `1px solid ${alpha("#f15a22", isDarkMode ? 0.2 : 0.1)}`,
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 3,
+                alignItems: "center",
+                mb: 2,
+              }}
+            >
+              <TextField
+                label="Start Date"
+                type="date"
+                value={format(startDate, "yyyy-MM-dd")}
+                onChange={(e) => setStartDate(new Date(e.target.value))}
+                InputLabelProps={{ shrink: true }}
+                size="small"
+                sx={{
+                  minWidth: 170,
+                  "& .MuiOutlinedInput-root": {
+                    "&:hover fieldset": {
+                      borderColor: alpha("#f15a22", 0.5),
+                    },
+                  },
+                }}
+                InputProps={{
+                  startAdornment: <CalendarMonth fontSize="small" sx={{ mr: 1, color: alpha("#f15a22", 0.7) }} />,
+                }}
+              />
+              <TextField
+                label="End Date"
+                type="date"
+                value={format(endDate, "yyyy-MM-dd")}
+                onChange={(e) => setEndDate(new Date(e.target.value))}
+                InputLabelProps={{ shrink: true }}
+                size="small"
+                sx={{
+                  minWidth: 170,
+                  "& .MuiOutlinedInput-root": {
+                    "&:hover fieldset": {
+                      borderColor: alpha("#f15a22", 0.5),
+                    },
+                  },
+                }}
+                InputProps={{
+                  startAdornment: <CalendarMonth fontSize="small" sx={{ mr: 1, color: alpha("#f15a22", 0.7) }} />,
+                }}
+              />
+
+              <TextField
+                select
+                label="Authority Type"
+                value={filterAuthority}
+                onChange={(e) => setFilterAuthority(e.target.value)}
+                size="small"
+                sx={{
+                  minWidth: 170,
+                  "& .MuiOutlinedInput-root": {
+                    "&:hover fieldset": {
+                      borderColor: alpha("#f15a22", 0.5),
+                    },
+                  },
+                }}
+                InputProps={{
+                  startAdornment: <AccountBalance fontSize="small" sx={{ mr: 1, color: alpha("#f15a22", 0.7) }} />,
+                }}
+              >
+                <MenuItem value="all">All Authorities</MenuItem>
+                <MenuItem value="FBR">FBR</MenuItem>
+                <MenuItem value="KPRA">KPRA</MenuItem>
+                <MenuItem value="PRA">PRA</MenuItem>
+              </TextField>
+
+              <TextField
+                select
+                label="Payment Method"
+                value={filterPaymentMethod}
+                onChange={(e) => setFilterPaymentMethod(e.target.value)}
+                size="small"
+                sx={{
+                  minWidth: 170,
+                  "& .MuiOutlinedInput-root": {
+                    "&:hover fieldset": {
+                      borderColor: alpha("#f15a22", 0.5),
+                    },
+                  },
+                }}
+                InputProps={{
+                  startAdornment: <CreditCard fontSize="small" sx={{ mr: 1, color: alpha("#f15a22", 0.7) }} />,
+                }}
+              >
+                <MenuItem value="all">All Methods</MenuItem>
+                {Object.keys(paymentMethodData).map((method) => (
+                  <MenuItem key={method} value={method}>
+                    {method}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <Button
+                variant="outlined"
+                startIcon={<FilterList />}
+                onClick={() => {
+                  setStartDate(subDays(new Date(), 30))
+                  setEndDate(new Date())
+                  setFilterAuthority("all")
+                  setFilterPaymentMethod("all")
+                }}
+                sx={{
+                  ml: "auto",
+                  borderColor: primaryColor,
+                  color: primaryColor,
+                  "&:hover": {
+                    borderColor: primaryColor,
+                    backgroundColor: alpha("#f15a22", isDarkMode ? 0.2 : 0.1),
+                  },
+                  borderRadius: "8px",
+                  textTransform: "none",
+                  fontWeight: 600,
+                }}
+              >
+                Reset Filters
+              </Button>
+            </Box>
+          </Paper>
+
+          <Grid container spacing={4}>
+            {/* Summary Cards */}
+            <Grid item xs={12} md={4}>
+              <Card
+                sx={{
+                  height: "100%",
+                  borderRadius: 3,
+                  boxShadow: isDarkMode ? "0 10px 30px rgba(0,0,0,0.3)" : "0 10px 30px rgba(0,0,0,0.1)",
+                  border: `1px solid ${alpha("#f15a22", isDarkMode ? 0.3 : 0.2)}`,
+                  transition: "transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out",
+                  "&:hover": {
+                    transform: "translateY(-8px)",
+                    boxShadow: isDarkMode ? "0 15px 35px rgba(0,0,0,0.4)" : "0 15px 35px rgba(0,0,0,0.15)",
+                    borderColor: alpha("#f15a22", isDarkMode ? 0.5 : 0.4),
+                  },
+                  overflow: "hidden",
+                  position: "relative",
+                  backgroundColor: isDarkMode ? "rgba(30,30,30,0.6)" : undefined,
+                }}
+              >
+                <Box
+                  sx={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: "8px",
+                    background: `linear-gradient(to right, ${primaryColor}, ${alpha("#f15a22", 0.7)})`,
+                  }}
+                />
+                <CardContent
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    height: "100%",
+                    p: 4,
+                    pt: 5,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 70,
+                      height: 70,
+                      borderRadius: "50%",
+                      backgroundColor: alpha("#f15a22", isDarkMode ? 0.2 : 0.1),
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      mb: 3,
+                    }}
+                  >
+                    <ShoppingCart sx={{ fontSize: 32, color: primaryColor }} />
+                  </Box>
+                  <Typography color="textSecondary" gutterBottom variant="subtitle1" sx={{ fontWeight: 500 }}>
+                    Total Sales
+                  </Typography>
+                  <Typography
+                    variant="h3"
+                    component="div"
+                    sx={{
+                      fontWeight: 700,
+                      color: primaryColor,
+                      my: 2,
+                      letterSpacing: "-0.5px",
+                    }}
+                  >
+                    ${totalSales.toFixed(2)}
+                  </Typography>
+                  <Typography color="textSecondary" variant="body2" sx={{ textAlign: "center" }}>
+                    {format(startDate, "MMM d, yyyy")} - {format(endDate, "MMM d, yyyy")}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid item xs={12} md={4}>
+              <Card
+                sx={{
+                  height: "100%",
+                  borderRadius: 3,
+                  boxShadow: isDarkMode ? "0 10px 30px rgba(0,0,0,0.3)" : "0 10px 30px rgba(0,0,0,0.1)",
+                  border: `1px solid ${alpha("#f15a22", isDarkMode ? 0.3 : 0.2)}`,
+                  transition: "transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out",
+                  "&:hover": {
+                    transform: "translateY(-8px)",
+                    boxShadow: isDarkMode ? "0 15px 35px rgba(0,0,0,0.4)" : "0 15px 35px rgba(0,0,0,0.15)",
+                    borderColor: alpha("#f15a22", isDarkMode ? 0.5 : 0.4),
+                  },
+                  overflow: "hidden",
+                  position: "relative",
+                  backgroundColor: isDarkMode ? "rgba(30,30,30,0.6)" : undefined,
+                }}
+              >
+                <Box
+                  sx={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: "8px",
+                    background: `linear-gradient(to right, ${primaryColor}, ${alpha("#f15a22", 0.7)})`,
+                  }}
+                />
+                <CardContent
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    height: "100%",
+                    p: 4,
+                    pt: 5,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 70,
+                      height: 70,
+                      borderRadius: "50%",
+                      backgroundColor: alpha("#f15a22", isDarkMode ? 0.2 : 0.1),
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      mb: 3,
+                    }}
+                  >
+                    <Payment sx={{ fontSize: 32, color: primaryColor }} />
+                  </Box>
+                  <Typography color="textSecondary" gutterBottom variant="subtitle1" sx={{ fontWeight: 500 }}>
+                    Total Transactions
+                  </Typography>
+                  <Typography
+                    variant="h3"
+                    component="div"
+                    sx={{
+                      fontWeight: 700,
+                      color: primaryColor,
+                      my: 2,
+                      letterSpacing: "-0.5px",
+                    }}
+                  >
+                    {totalTransactions}
+                  </Typography>
+                  <Typography color="textSecondary" variant="body2" sx={{ textAlign: "center" }}>
+                    Avg. ${averageTransactionValue.toFixed(2)} per transaction
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid item xs={12} md={4}>
+              <Card
+                sx={{
+                  height: "100%",
+                  borderRadius: 3,
+                  boxShadow: isDarkMode ? "0 10px 30px rgba(0,0,0,0.3)" : "0 10px 30px rgba(0,0,0,0.1)",
+                  border: `1px solid ${alpha("#f15a22", isDarkMode ? 0.3 : 0.2)}`,
+                  transition: "transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out",
+                  "&:hover": {
+                    transform: "translateY(-8px)",
+                    boxShadow: isDarkMode ? "0 15px 35px rgba(0,0,0,0.4)" : "0 15px 35px rgba(0,0,0,0.15)",
+                    borderColor: alpha("#f15a22", isDarkMode ? 0.5 : 0.4),
+                  },
+                  overflow: "hidden",
+                  position: "relative",
+                  backgroundColor: isDarkMode ? "rgba(30,30,30,0.6)" : undefined,
+                }}
+              >
+                <Box
+                  sx={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: "8px",
+                    background: `linear-gradient(to right, ${primaryColor}, ${alpha("#f15a22", 0.7)})`,
+                  }}
+                />
+                <CardContent
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    height: "100%",
+                    p: 4,
+                    pt: 5,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 70,
+                      height: 70,
+                      borderRadius: "50%",
+                      backgroundColor: alpha("#f15a22", isDarkMode ? 0.2 : 0.1),
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      mb: 3,
+                    }}
+                  >
+                    <PointOfSale sx={{ fontSize: 32, color: primaryColor }} />
+                  </Box>
+                  <Typography color="textSecondary" gutterBottom variant="subtitle1" sx={{ fontWeight: 500 }}>
+                    POS Status
+                  </Typography>
+                  <Box sx={{ display: "flex", gap: 2, my: 2 }}>
+                    <Chip
+                      icon={<PointOfSale />}
+                      label={`${posStatusCount.Online || 0} Online`}
+                      color="success"
+                      variant="outlined"
+                      sx={{
+                        px: 1,
+                        fontWeight: "medium",
+                        borderWidth: 2,
+                        borderRadius: "16px",
+                      }}
+                    />
+                    <Chip
+                      icon={<PointOfSale />}
+                      label={`${posStatusCount.Offline || 0} Offline`}
+                      color="error"
+                      variant="outlined"
+                      sx={{
+                        px: 1,
+                        fontWeight: "medium",
+                        borderWidth: 2,
+                        borderRadius: "16px",
+                      }}
+                    />
+                  </Box>
+                  <Typography color="textSecondary" variant="body2" sx={{ textAlign: "center" }}>
+                    Total: {posConfigs.length} POS Configured
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Tabs for different report sections */}
+            <Grid item xs={12}>
+              <Paper
+                sx={{
+                  width: "100%",
+                  borderRadius: 3,
+                  boxShadow: isDarkMode ? "0 8px 24px rgba(0,0,0,0.3)" : "0 8px 24px rgba(0,0,0,0.12)",
+                  overflow: "hidden",
+                  border: `1px solid ${alpha("#f15a22", isDarkMode ? 0.25 : 0.15)}`,
+                  backgroundColor: isDarkMode ? "rgba(30,30,30,0.6)" : undefined,
+                }}
+              >
+                <Tabs
+                  value={tabValue}
+                  onChange={handleTabChange}
+                  variant="fullWidth"
+                  sx={{
+                    borderBottom: 1,
+                    borderColor: "divider",
+                    "& .MuiTab-root": {
+                      py: 2.5,
+                      fontWeight: 600,
+                      color: alpha("#f15a22", isDarkMode ? 0.8 : 0.7),
+                      transition: "all 0.2s ease",
+                      "&.Mui-selected": {
+                        color: primaryColor,
+                      },
+                      "&:hover": {
+                        backgroundColor: alpha("#f15a22", isDarkMode ? 0.1 : 0.05),
+                      },
+                    },
+                    "& .MuiTabs-indicator": {
+                      backgroundColor: primaryColor,
+                      height: 3,
+                    },
+                  }}
+                >
+                  <Tab icon={<TrendingUp />} label="Sales Trends" iconPosition="start" sx={{ gap: 1 }} />
+                  <Tab icon={<Payment />} label="Payment Analysis" iconPosition="start" sx={{ gap: 1 }} />
+                  <Tab icon={<PointOfSale />} label="POS Configuration" iconPosition="start" sx={{ gap: 1 }} />
+                  <Tab icon={<Inventory />} label="Top Products" iconPosition="start" sx={{ gap: 1 }} />
+                </Tabs>
+
+                {/* Sales Trends Tab */}
+                {tabValue === 0 && (
+                  <Box sx={{ p: 4 }}>
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 700, color: primaryColor, mb: 3 }}>
+                      Sales Trend Over Time
+                    </Typography>
+                    <ErrorBoundary>
+                      <Box sx={{ height: 400, p: 2, mb: 4 }}>
+                        {trendData.length > 0 ? (
+                          <SimpleLineChart data={trendData} xKey="date" yKey="total" label="Daily Sales ($)" />
+                        ) : (
+                          <Box
+                            sx={{
+                              display: "flex",
+                              flexDirection: "column",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              height: "100%",
+                              backgroundColor: alpha("#f15a22", isDarkMode ? 0.08 : 0.03),
+                              borderRadius: 2,
+                              p: 4,
+                            }}
+                          >
+                            <TrendingUp sx={{ fontSize: 48, color: alpha("#f15a22", isDarkMode ? 0.4 : 0.3), mb: 2 }} />
+                            <Typography variant="body1" align="center" sx={{ color: "text.secondary" }}>
+                              No trend data available for the selected period.
+                            </Typography>
+                          </Box>
+                        )}
+                      </Box>
+                    </ErrorBoundary>
+
+                    <Typography
+                      variant="h6"
+                      gutterBottom
+                      sx={{ fontWeight: 700, color: primaryColor, mt: 13, pt: 2, clear: "both" }}
+                    >
+                      Daily Sales Breakdown
+                    </Typography>
+                    <TableContainer
+                      component={Paper}
+                      sx={{
+                        mt: 2,
+                        borderRadius: 2,
+                        boxShadow: isDarkMode ? "0 4px 16px rgba(0,0,0,0.2)" : "0 4px 16px rgba(0,0,0,0.08)",
+                        overflow: "hidden",
+                        mb: 4,
+                        width: "100%",
+                        clear: "both",
+                        border: `1px solid ${alpha("#f15a22", isDarkMode ? 0.2 : 0.1)}`,
+                        backgroundColor: isDarkMode ? "rgba(30,30,30,0.4)" : undefined,
+                      }}
+                    >
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow sx={{ backgroundColor: alpha("#f15a22", isDarkMode ? 0.15 : 0.05) }}>
+                            <TableCell sx={{ fontWeight: "bold", py: 2 }}>Date</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: "bold", py: 2 }}>
+                              Transactions
+                            </TableCell>
+                            <TableCell align="right" sx={{ fontWeight: "bold", py: 2 }}>
+                              Total Sales
+                            </TableCell>
+                            <TableCell align="right" sx={{ fontWeight: "bold", py: 2 }}>
+                              Average Sale
+                            </TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {trendData.length > 0 ? (
+                            trendData.map((row) => (
+                              <TableRow
+                                key={row.date}
+                                hover
+                                sx={{
+                                  "&:hover": {
+                                    backgroundColor: alpha("#f15a22", isDarkMode ? 0.08 : 0.03),
+                                  },
+                                }}
+                              >
+                                <TableCell component="th" scope="row" sx={{ py: 1.5 }}>
+                                  {row.date}
+                                </TableCell>
+                                <TableCell align="right" sx={{ py: 1.5 }}>
+                                  {row.count}
+                                </TableCell>
+                                <TableCell align="right" sx={{ py: 1.5, fontWeight: 500 }}>
+                                  ${row.total.toFixed(2)}
+                                </TableCell>
+                                <TableCell align="right" sx={{ py: 1.5 }}>
+                                  ${(row.total / row.count).toFixed(2)}
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          ) : (
+                            <TableRow>
+                              <TableCell colSpan={4} align="center" sx={{ py: 4 }}>
+                                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+                                  <TrendingUp sx={{ fontSize: 32, color: alpha("#f15a22", isDarkMode ? 0.4 : 0.3) }} />
+                                  <Typography variant="body2" color="text.secondary">
+                                    No data available for the selected period.
+                                  </Typography>
+                                </Box>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Box>
+                )}
+
+                {/* Payment Analysis Tab */}
+                {tabValue === 1 && (
+                  <Box sx={{ p: 4 }}>
+                    <Grid container spacing={4}>
+                      <Grid item xs={12} md={6}>
+                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 700, color: primaryColor, mb: 3 }}>
+                          Sales by Payment Method
+                        </Typography>
+                        <ErrorBoundary>
+                          <Box
+                            sx={{
+                              height: 400,
+                              p: 2,
+                              backgroundColor: isDarkMode
+                                ? alpha(theme.palette.background.paper, 0.1)
+                                : alpha(theme.palette.background.paper, 0.5),
+                              borderRadius: 2,
+                              border: `1px solid ${alpha("#f15a22", isDarkMode ? 0.2 : 0.1)}`,
+                              boxShadow: isDarkMode ? "0 4px 16px rgba(0,0,0,0.2)" : "0 4px 16px rgba(0,0,0,0.05)",
+                            }}
+                          >
+                            {paymentChartData.length > 0 ? (
+                              <SimplePieChart data={paymentChartData} valueKey="value" labelKey="name" />
+                            ) : (
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  height: "100%",
+                                  backgroundColor: alpha("#f15a22", isDarkMode ? 0.08 : 0.03),
+                                  borderRadius: 2,
+                                  p: 4,
+                                }}
+                              >
+                                <Payment
+                                  sx={{ fontSize: 48, color: alpha("#f15a22", isDarkMode ? 0.4 : 0.3), mb: 2 }}
+                                />
+                                <Typography variant="body1" align="center" sx={{ color: "text.secondary" }}>
+                                  No payment data available for the selected period.
+                                </Typography>
+                              </Box>
+                            )}
+                          </Box>
+                        </ErrorBoundary>
+                      </Grid>
+
+                      <Grid item xs={12} md={6}>
+                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 700, color: primaryColor, mb: 3 }}>
+                          Payment Method Details
+                        </Typography>
+                        <TableContainer
+                          component={Paper}
+                          sx={{
+                            borderRadius: 2,
+                            boxShadow: isDarkMode ? "0 4px 16px rgba(0,0,0,0.2)" : "0 4px 16px rgba(0,0,0,0.08)",
+                            height: "calc(400px - 32px)",
+                            overflow: "auto",
+                            border: `1px solid ${alpha("#f15a22", isDarkMode ? 0.2 : 0.1)}`,
+                            backgroundColor: isDarkMode ? "rgba(30,30,30,0.4)" : undefined,
+                          }}
+                        >
+                          <Table>
+                            <TableHead>
+                              <TableRow sx={{ backgroundColor: alpha("#f15a22", isDarkMode ? 0.15 : 0.05) }}>
+                                <TableCell sx={{ fontWeight: "bold", py: 2 }}>Payment Method</TableCell>
+                                <TableCell align="right" sx={{ fontWeight: "bold", py: 2 }}>
+                                  Transactions
+                                </TableCell>
+                                <TableCell align="right" sx={{ fontWeight: "bold", py: 2 }}>
+                                  Total Amount
+                                </TableCell>
+                                <TableCell align="right" sx={{ fontWeight: "bold", py: 2 }}>
+                                  Average
+                                </TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {paymentChartData.length > 0 ? (
+                                paymentChartData.map((row) => (
+                                  <TableRow
+                                    key={row.name}
+                                    hover
+                                    sx={{
+                                      "&:hover": {
+                                        backgroundColor: alpha("#f15a22", isDarkMode ? 0.08 : 0.03),
+                                      },
+                                    }}
+                                  >
+                                    <TableCell component="th" scope="row" sx={{ py: 1.5 }}>
+                                      {row.name}
+                                    </TableCell>
+                                    <TableCell align="right" sx={{ py: 1.5 }}>
+                                      {row.count}
+                                    </TableCell>
+                                    <TableCell align="right" sx={{ py: 1.5, fontWeight: 500 }}>
+                                      ${row.value.toFixed(2)}
+                                    </TableCell>
+                                    <TableCell align="right" sx={{ py: 1.5 }}>
+                                      ${(row.value / row.count).toFixed(2)}
+                                    </TableCell>
+                                  </TableRow>
+                                ))
+                              ) : (
+                                <TableRow>
+                                  <TableCell colSpan={4} align="center" sx={{ py: 4 }}>
+                                    <Box
+                                      sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}
+                                    >
+                                      <Payment sx={{ fontSize: 32, color: alpha("#f15a22", isDarkMode ? 0.4 : 0.3) }} />
+                                      <Typography variant="body2" color="text.secondary">
+                                        No data available for the selected period.
+                                      </Typography>
+                                    </Box>
+                                  </TableCell>
+                                </TableRow>
+                              )}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      </Grid>
+                    </Grid>
+                  </Box>
+                )}
+
+                {/* POS Configuration Tab */}
+                {tabValue === 2 && (
+                  <Box sx={{ p: 4 }}>
+                    <Grid container spacing={4}>
+                      <Grid item xs={12} md={6}>
+                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 700, color: primaryColor, mb: 3 }}>
+                          POS by Authority Type
+                        </Typography>
+                        <ErrorBoundary>
+                          <Box
+                            sx={{
+                              height: 300,
+                              p: 2,
+                              backgroundColor: isDarkMode
+                                ? alpha(theme.palette.background.paper, 0.1)
+                                : alpha(theme.palette.background.paper, 0.5),
+                              borderRadius: 2,
+                              border: `1px solid ${alpha("#f15a22", isDarkMode ? 0.2 : 0.1)}`,
+                              boxShadow: isDarkMode ? "0 4px 16px rgba(0,0,0,0.2)" : "0 4px 16px rgba(0,0,0,0.05)",
+                            }}
+                          >
+                            {authorityData.length > 0 ? (
+                              <SimplePieChart data={authorityData} valueKey="value" labelKey="name" />
+                            ) : (
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  height: "100%",
+                                  backgroundColor: alpha("#f15a22", isDarkMode ? 0.08 : 0.03),
+                                  borderRadius: 2,
+                                  p: 4,
+                                }}
+                              >
+                                <AccountBalance
+                                  sx={{ fontSize: 48, color: alpha("#f15a22", isDarkMode ? 0.4 : 0.3), mb: 2 }}
+                                />
+                                <Typography variant="body1" align="center" sx={{ color: "text.secondary" }}>
+                                  No authority data available.
+                                </Typography>
+                              </Box>
+                            )}
+                          </Box>
+                        </ErrorBoundary>
+                      </Grid>
+
+                      <Grid item xs={12} md={6}>
+                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 700, color: primaryColor, mb: 3 }}>
+                          POS Status Distribution
+                        </Typography>
+                        <ErrorBoundary>
+                          <Box
+                            sx={{
+                              height: 300,
+                              p: 2,
+                              backgroundColor: isDarkMode
+                                ? alpha(theme.palette.background.paper, 0.1)
+                                : alpha(theme.palette.background.paper, 0.5),
+                              borderRadius: 2,
+                              border: `1px solid ${alpha("#f15a22", isDarkMode ? 0.2 : 0.1)}`,
+                              boxShadow: isDarkMode ? "0 4px 16px rgba(0,0,0,0.2)" : "0 4px 16px rgba(0,0,0,0.05)",
+                            }}
+                          >
+                            {posStatusData.length > 0 ? (
+                              <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    gap: 6,
+                                    mb: 4,
+                                  }}
+                                >
+                                  {posStatusData.map((item, index) => (
+                                    <Box
+                                      key={index}
+                                      sx={{
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        alignItems: "center",
+                                        transition: "transform 0.2s ease",
+                                        "&:hover": {
+                                          transform: "scale(1.05)",
+                                        },
+                                      }}
+                                    >
+                                      <Box
+                                        sx={{
+                                          width: 120,
+                                          height: 120,
+                                          borderRadius: "50%",
+                                          backgroundColor: item.name === "Online" ? "#00C49F" : primaryColor,
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "center",
+                                          mb: 2,
+                                          boxShadow: isDarkMode
+                                            ? "0 8px 20px rgba(0,0,0,0.4)"
+                                            : "0 8px 20px rgba(0,0,0,0.15)",
+                                          position: "relative",
+                                          "&::after": {
+                                            content: '""',
+                                            position: "absolute",
+                                            top: 5,
+                                            left: 5,
+                                            right: 5,
+                                            bottom: 5,
+                                            borderRadius: "50%",
+                                            border: "2px solid rgba(255,255,255,0.3)",
+                                          },
+                                        }}
+                                      >
+                                        <Typography variant="h4" color="white" fontWeight="bold">
+                                          {item.value}
+                                        </Typography>
+                                      </Box>
+                                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                        {item.name}
+                                      </Typography>
+                                    </Box>
+                                  ))}
+                                </Box>
+                                <Divider sx={{ width: "100%", mb: 2 }} />
+                                <Typography variant="body1" fontWeight="medium" sx={{ color: primaryColor }}>
+                                  Total POS: {posConfigs.length}
+                                </Typography>
+                              </Box>
+                            ) : (
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  height: "100%",
+                                  backgroundColor: alpha("#f15a22", isDarkMode ? 0.08 : 0.03),
+                                  borderRadius: 2,
+                                  p: 4,
+                                }}
+                              >
+                                <PointOfSale
+                                  sx={{ fontSize: 48, color: alpha("#f15a22", isDarkMode ? 0.4 : 0.3), mb: 2 }}
+                                />
+                                <Typography variant="body1" align="center" sx={{ color: "text.secondary" }}>
+                                  No status data available.
+                                </Typography>
+                              </Box>
+                            )}
+                          </Box>
+                        </ErrorBoundary>
+                      </Grid>
+
+                      <Grid item xs={12}>
+                        <Typography
+                          variant="h6"
+                          gutterBottom
+                          sx={{ fontWeight: 700, color: primaryColor, mt: 2, mb: 3 }}
+                        >
+                          POS Configuration Details
+                        </Typography>
+                        <TableContainer
+                          component={Paper}
+                          sx={{
+                            borderRadius: 2,
+                            boxShadow: isDarkMode ? "0 4px 16px rgba(0,0,0,0.2)" : "0 4px 16px rgba(0,0,0,0.08)",
+                            overflow: "hidden",
+                            border: `1px solid ${alpha("#f15a22", isDarkMode ? 0.2 : 0.1)}`,
+                            backgroundColor: isDarkMode ? "rgba(30,30,30,0.4)" : undefined,
+                          }}
+                        >
+                          <Table>
+                            <TableHead>
+                              <TableRow sx={{ backgroundColor: alpha("#f15a22", isDarkMode ? 0.15 : 0.05) }}>
+                                <TableCell sx={{ fontWeight: "bold", py: 2 }}>POS ID</TableCell>
+                                <TableCell sx={{ fontWeight: "bold", py: 2 }}>Registration Number</TableCell>
+                                <TableCell sx={{ fontWeight: "bold", py: 2 }}>Authority Type</TableCell>
+                                <TableCell sx={{ fontWeight: "bold", py: 2 }}>Status</TableCell>
+                                <TableCell sx={{ fontWeight: "bold", py: 2 }}>Time Bound</TableCell>
+                                <TableCell sx={{ fontWeight: "bold", py: 2 }}>Username</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {filteredPosConfigs.length > 0 ? (
+                                filteredPosConfigs.map((pos) => (
+                                  <TableRow
+                                    key={pos.PosID}
+                                    hover
+                                    sx={{
+                                      "&:hover": {
+                                        backgroundColor: alpha("#f15a22", isDarkMode ? 0.08 : 0.03),
+                                      },
+                                    }}
+                                  >
+                                    <TableCell sx={{ py: 1.5 }}>{pos.PosID}</TableCell>
+                                    <TableCell sx={{ py: 1.5 }}>{pos.RegistrationNumber}</TableCell>
+                                    <TableCell sx={{ py: 1.5 }}>{pos.AuthorityType}</TableCell>
+                                    <TableCell sx={{ py: 1.5 }}>
+                                      <Chip
+                                        label={pos.POSStatus}
+                                        color={pos.POSStatus === "Online" ? "success" : "error"}
+                                        size="small"
+                                        sx={{
+                                          fontWeight: "medium",
+                                          borderRadius: "12px",
+                                          boxShadow: "0 2px 5px rgba(0,0,0,0.08)",
+                                        }}
+                                      />
+                                    </TableCell>
+                                    <TableCell sx={{ py: 1.5 }}>
+                                      {format(new Date(pos.TimeBound.Start), "MM/dd/yyyy")} -{" "}
+                                      {format(new Date(pos.TimeBound.End), "MM/dd/yyyy")}
+                                    </TableCell>
+                                    <TableCell sx={{ py: 1.5 }}>{pos.Username || "N/A"}</TableCell>
+                                  </TableRow>
+                                ))
+                              ) : (
+                                <TableRow>
+                                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                                    <Box
+                                      sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}
+                                    >
+                                      <PointOfSale
+                                        sx={{ fontSize: 32, color: alpha("#f15a22", isDarkMode ? 0.4 : 0.3) }}
+                                      />
+                                      <Typography variant="body2" color="text.secondary">
+                                        No POS configurations available.
+                                      </Typography>
+                                    </Box>
+                                  </TableCell>
+                                </TableRow>
+                              )}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      </Grid>
+                    </Grid>
+                  </Box>
+                )}
+
+                {/* Top Products Tab */}
+                {tabValue === 3 && (
+                  <Box sx={{ p: 4 }}>
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 700, color: primaryColor, mb: 3 }}>
+                      Top Selling Products
+                    </Typography>
+                    <ErrorBoundary>
+                      <Box
+                        sx={{
+                          height: 400,
+                          p: 3,
+                          backgroundColor: isDarkMode
+                            ? alpha(theme.palette.background.paper, 0.1)
+                            : alpha(theme.palette.background.paper, 0.5),
+                          borderRadius: 2,
+                          border: `1px solid ${alpha("#f15a22", isDarkMode ? 0.2 : 0.1)}`,
+                          boxShadow: isDarkMode ? "0 4px 16px rgba(0,0,0,0.2)" : "0 4px 16px rgba(0,0,0,0.05)",
+                          mb: 4,
+                        }}
+                      >
+                        {topItems.length > 0 ? (
+                          <SimpleBarChart
+                            data={topItems}
+                            valueKey="totalSales"
+                            labelKey="itemName"
+                            color={primaryColor}
+                          />
+                        ) : (
+                          <Box
+                            sx={{
+                              display: "flex",
+                              flexDirection: "column",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              height: "100%",
+                              backgroundColor: alpha("#f15a22", isDarkMode ? 0.08 : 0.03),
+                              borderRadius: 2,
+                              p: 4,
+                            }}
+                          >
+                            <Inventory sx={{ fontSize: 48, color: alpha("#f15a22", isDarkMode ? 0.4 : 0.3), mb: 2 }} />
+                            <Typography variant="body1" align="center" sx={{ color: "text.secondary" }}>
+                              No product data available for the selected period.
+                            </Typography>
+                          </Box>
+                        )}
+                      </Box>
+                    </ErrorBoundary>
+
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 700, color: primaryColor, mt: 4, mb: 3 }}>
+                      Product Sales Details
+                    </Typography>
+                    <TableContainer
+                      component={Paper}
+                      sx={{
+                        borderRadius: 2,
+                        boxShadow: isDarkMode ? "0 4px 16px rgba(0,0,0,0.2)" : "0 4px 16px rgba(0,0,0,0.08)",
+                        overflow: "hidden",
+                        border: `1px solid ${alpha("#f15a22", isDarkMode ? 0.2 : 0.1)}`,
+                        backgroundColor: isDarkMode ? "rgba(30,30,30,0.4)" : undefined,
+                      }}
+                    >
+                      <Table>
+                        <TableHead>
+                          <TableRow sx={{ backgroundColor: alpha("#f15a22", isDarkMode ? 0.15 : 0.05) }}>
+                            <TableCell sx={{ fontWeight: "bold", py: 2 }}>Item ID</TableCell>
+                            <TableCell sx={{ fontWeight: "bold", py: 2 }}>Item Name</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: "bold", py: 2 }}>
+                              Quantity Sold
+                            </TableCell>
+                            <TableCell align="right" sx={{ fontWeight: "bold", py: 2 }}>
+                              Total Sales
+                            </TableCell>
+                            <TableCell align="right" sx={{ fontWeight: "bold", py: 2 }}>
+                              Transactions
+                            </TableCell>
+                            <TableCell align="right" sx={{ fontWeight: "bold", py: 2 }}>
+                              Avg. Price
+                            </TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {Object.values(itemSales).length > 0 ? (
+                            Object.values(itemSales)
+                              .sort((a, b) => b.totalSales - a.totalSales)
+                              .map((item) => (
+                                <TableRow
+                                  key={item.itemId}
+                                  hover
+                                  sx={{
+                                    "&:hover": {
+                                      backgroundColor: alpha("#f15a22", isDarkMode ? 0.08 : 0.03),
+                                    },
+                                  }}
+                                >
+                                  <TableCell sx={{ py: 1.5 }}>{item.itemId}</TableCell>
+                                  <TableCell sx={{ py: 1.5 }}>{item.itemName}</TableCell>
+                                  <TableCell align="right" sx={{ py: 1.5 }}>
+                                    {item.totalQuantity}
+                                  </TableCell>
+                                  <TableCell align="right" sx={{ py: 1.5, fontWeight: 500 }}>
+                                    ${item.totalSales.toFixed(2)}
+                                  </TableCell>
+                                  <TableCell align="right" sx={{ py: 1.5 }}>
+                                    {item.occurrences}
+                                  </TableCell>
+                                  <TableCell align="right" sx={{ py: 1.5 }}>
+                                    ${(item.totalSales / item.totalQuantity).toFixed(2)}
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                          ) : (
+                            <TableRow>
+                              <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+                                  <Inventory sx={{ fontSize: 32, color: alpha("#f15a22", isDarkMode ? 0.4 : 0.3) }} />
+                                  <Typography variant="body2" color="text.secondary">
+                                    No product data available for the selected period.
+                                  </Typography>
+                                </Box>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Box>
+                )}
+              </Paper>
+            </Grid>
+          </Grid>
+        </Container>
+      </ErrorBoundary>
+    </MainContentWrapper>
+  )
+}
+
+export default Reporting
