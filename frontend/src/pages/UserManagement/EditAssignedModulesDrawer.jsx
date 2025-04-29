@@ -27,10 +27,10 @@ const EditAssignedModulesDrawer = ({ open, onClose, user, onModulesUpdated }) =>
 
   useEffect(() => {
     setModules([
-      { main: 'Retail and Commerce', subModules: ['Store Transactions', 'POS Configuration', 'Reports'] },
-      { main: 'Product Information and Configuration', subModules: ['Product Addition', 'Product Categories', 'SKU Management', 'Product Pricing'] },
-      { main: 'Inventory Management', subModules: ['Stock Management', 'Warehouse Management', 'Stock Movements & Adjustments'] },
-      { main: 'Finance and Sales', subModules: ['Sales Order', 'Billing and Payments', 'Tax Configurations'] },
+      { main: 'Retail and Commerce', subModules: ['Store Transactions', 'POS Configuration', 'Reporting'] },
+      { main: 'Product Information and Configuration', subModules: ['Product Addition','Product Categories','SKU Management','Product Pricing'] },
+      { main: 'Inventory Management', subModules: ['Stock Management', 'Warehouse Management','Stock Movements & Adjustments'] },
+      { main: 'Finance and Sales', subModules: ['Accounts Payable','Accounts Receievable','Bank Management','Tax Configuration','Reporting'] },
       { main: 'Reports and Analytics', subModules: ['Sales Report', 'Inventory Report', 'Financial Analytics'] },
       { main: 'User Management', subModules: [] },
     ]);
@@ -60,7 +60,7 @@ const EditAssignedModulesDrawer = ({ open, onClose, user, onModulesUpdated }) =>
 
     const selectedModules = Object.keys(checkedModules).filter((key) => checkedModules[key]);
     try {
-      await axios.put(`${process.env.REACT_APP_API_BASE_URL}/users/${user._id}/modules`, {
+      await axios.put(`${process.env.REACT_APP_API_BASE_URL}/auth/${user._id}/modules`, {
         modules: selectedModules,
       });
       setSnackbarOpen(true); // Show Snackbar on successful update

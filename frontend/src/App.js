@@ -26,6 +26,7 @@ import StoreTransaction from "./pages/RetailCommerce/StoreTransaction/StoreTrans
 import PosConfiguration from "./pages/RetailCommerce/PosConfiguration/PosConfiguration";
 import Reporting from "./pages/RetailCommerce/Reporting/Reporting";
 import FinanceAndSales from "./pages/Finance and Sales/FinanceAndSales";
+import AccountsPayable from "./pages/Finance and Sales/AccountsPayable/AccountsPayable";
 
 function App() {
   // ------------ Authentication ------------
@@ -355,6 +356,19 @@ function App() {
               )
             }
           />
+
+          <Route
+            path="/FinanceandSales/AccountsPayable"
+            element={
+              isAuthenticated ? (
+                <AccountsPayable user={user} />
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+
+
 
           
 

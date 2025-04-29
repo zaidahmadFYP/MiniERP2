@@ -35,28 +35,21 @@ import InfoIcon from "@mui/icons-material/Info";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import AddUserDrawer from "./AddUserDrawer";
 import MainContentWrapper from "./MainContentWrapper";
-import { useZones } from "./ZonesComponent";
 import EditUserDrawer from "./EditUserDrawer";
 import EditAssignedModulesDrawer from "./EditAssignedModulesDrawer";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import FilterButton from "./FilterButton";
-import HoverPopoverButton from "./HoverPopoverButton";
-import EditBranchNameDrawer from "./EditBranchNameDrawer";
-import UploadAccounts from "./UploadAccounts";
-import AddBranchDrawer from "./AddBranchDrawer";
-import FileUploadIcon from "@mui/icons-material/FileUpload";
-import EditLocationAltIcon from "@mui/icons-material/EditLocationAlt";
+
 
 const ActiveUsers = () => {
-  const { zones, addBranch } = useZones();
+ 
   const theme = useTheme();
 
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [branchDrawerOpen, setBranchDrawerOpen] = useState(false);
-  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [deleteSnackbarOpen, setDeleteSnackbarOpen] = useState(false);
@@ -67,7 +60,6 @@ const ActiveUsers = () => {
   const [editModulesDrawerOpen, setEditModulesDrawerOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [menuAnchorEl, setMenuAnchorEl] = useState(null);
-  const [editBranchNameOpen, setEditBranchNameOpen] = useState(false);
 
   const [passwordCopiedSnackbarOpen, setPasswordCopiedSnackbarOpen] =
     useState(false);
@@ -119,21 +111,6 @@ const ActiveUsers = () => {
     setDrawerOpen(false);
   };
 
-  const handleBranchDrawerOpen = () => {
-    setBranchDrawerOpen(true);
-  };
-
-  const handleBranchDrawerClose = () => {
-    setBranchDrawerOpen(false);
-  };
-
-  const handleUploadDialogOpen = () => {
-    setUploadDialogOpen(true);
-  };
-
-  const handleUploadDialogClose = () => {
-    setUploadDialogOpen(false);
-  };
 
   const handleEditClick = (event, user) => {
     setSelectedUser(user);
@@ -205,7 +182,7 @@ const ActiveUsers = () => {
     try {
       for (let userId of selectedUsers) {
         await axios.delete(
-          `${process.env.REACT_APP_API_BASE_URL}/users/${userId}`
+          `${process.env.REACT_APP_API_BASE_URL}/auth/${userId}`
         );
       }
 
@@ -223,7 +200,7 @@ const ActiveUsers = () => {
     try {
       // Send the reset request to the server
       const response = await axios.put(
-        `${process.env.REACT_APP_API_BASE_URL}/users/${userId}/resetPassword`,
+        `${process.env.REACT_APP_API_BASE_URL}/auth/${userId}/resetPassword`,
         {
           newPassword,
         }
@@ -255,24 +232,6 @@ const ActiveUsers = () => {
       selectedRoles.length === 0 || selectedRoles.includes(user.role);
     return matchesSearch && matchesRole;
   });
-
-  if (loading) {
-    return <Typography>Loading...</Typography>;
-  }
-
-  const handleEditBranchNameOpen = () => {
-    setEditBranchNameOpen(true);
-  };
-
-  const handleEditBranchNameClose = () => {
-    setEditBranchNameOpen(false);
-  };
-
-  const handleBranchUpdated = () => {
-    console.log("Branch has been updated");
-    fetchUsers(); // Refresh user data or branches as needed
-    setEditBranchNameOpen(false);
-  };
 
   return (
     <MainContentWrapper>
@@ -336,39 +295,6 @@ const ActiveUsers = () => {
             Reset password
           </Button>
 
-          {/* <Button
-            variant="text"
-            startIcon={<AddIcon />}
-            sx={{ marginRight: 2, textTransform: 'none', color: '#f15a22' }}
-            onClick={handleBranchDrawerOpen}
-          >
-            Add a branch
-          </Button> */}
-
-          {/* <Button
-            variant="text"
-            startIcon={<EditLocationAltIcon />}
-            sx={{ marginRight: 2, textTransform: 'none', color: '#f15a22' }}
-            onClick={handleEditBranchNameOpen}
-          >
-            Edit branch
-          </Button> */}
-
-          {/* <Button
-            variant="text"
-            startIcon={<FileUploadIcon />}
-            sx={{ marginRight: 2, textTransform: 'none', color: '#f15a22' }}
-            onClick={handleUploadDialogOpen}
-          >
-            Upload accounts
-          </Button> */}
-
-          {/* <FilterButton
-            roles={roles}
-            onFilterChange={handleFilterChange}
-            sx={{ mr: 1 }}
-          /> */}
-
           <TextField
             variant="outlined"
             size="small"
@@ -389,8 +315,6 @@ const ActiveUsers = () => {
             onFilterChange={handleFilterChange}
             sx={{ mr: 1 }}
           />
-          {/* Hover Button with Popover */}
-          {/* <HoverPopoverButton /> */}
         </Toolbar>
 
         <TableContainer component={Paper} sx={{ mt: 2, maxWidth: "100%" }}>
@@ -538,8 +462,6 @@ const ActiveUsers = () => {
           onUserCreated={handleUserCreated}
         />
 
-        {/* <AddBranchDrawer open={branchDrawerOpen} onClose={handleBranchDrawerClose} /> */}
-
         <EditUserDrawer
           open={editDrawerOpen}
           onClose={handleEditDrawerClose}
@@ -553,15 +475,6 @@ const ActiveUsers = () => {
           user={selectedUser}
           onModulesUpdated={handleModulesUpdated}
         />
-
-        {/* <UploadAccounts open={uploadDialogOpen} onClose={handleUploadDialogClose} onUsersAdded={fetchUsers} /> */}
-
-        {/* <EditBranchNameDrawer
-          open={editBranchNameOpen} // Pass the state to control the visibility of the drawer
-          onBranchUpdated={handleBranchUpdated}
-          onClose={handleEditBranchNameClose} // Pass the function to handle closing the drawer
-
-        /> */}
 
         <Snackbar
           open={passwordResetSnackbarOpen}

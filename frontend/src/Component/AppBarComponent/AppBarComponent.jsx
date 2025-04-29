@@ -220,7 +220,7 @@ function AppBarComponent({
                 },
               }}
             >
-              <Badge badgeContent={17} color="error">
+              <Badge badgeContent={null} color="error">
                 <NotificationsIcon />
               </Badge>
             </IconButton>

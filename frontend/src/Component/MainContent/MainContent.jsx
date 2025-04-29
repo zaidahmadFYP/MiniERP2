@@ -90,15 +90,15 @@ const MainContent = ({ user }) => {
 
   const tiles = useMemo(() => {
     const allTiles = [
-      { name: "Retail and Commerce", image: "/images/licenses.webp" },
+      { name: "Retail and Commerce", image: "/images/retail_and_commerce.png" },
       {
-        name: "Product Information and Management",
-        image: "/images/approved.webp",
+        name: "Product Information and Configuration",
+        image: "/images/product_management.png",
       },
-      { name: "Finance and Sales", image: "/images/vehicle.webp" },
-      { name: "Inventory Management", image: "/images/vehicle.webp" },
-      { name: "Reports and Analytics", image: "/images/vehicle.webp" },
-      { name: "User Management", image: "/images/user_management.webp" },
+      { name: "Finance and Sales", image: "/images/finance_and_sales.png" },
+      { name: "Inventory Management", image: "/images/inventory_management.png" },
+      { name: "Reports and Analytics", image: "/images/report_and_analytics.png" },
+      { name: "User Management", image: "/images/user_management.png" },
     ];
     return allTiles.filter((tile) =>
       user.registeredModules.some((module) => module.startsWith(tile.name))

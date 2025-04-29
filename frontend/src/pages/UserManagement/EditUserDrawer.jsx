@@ -77,7 +77,7 @@ const EditUserDrawer = ({ open, onClose, user, onUserUpdated }) => {
     console.log("Update payload being sent:", updatePayload); // Log payload
 
     try {
-      const response = await axios.put(`${process.env.REACT_APP_API_BASE_URL}/users/${user._id}`, updatePayload);
+      const response = await axios.put(`${process.env.REACT_APP_API_BASE_URL}/auth/${user._id}`, updatePayload);
       console.log('Response from server:', response.data); // Log response
       setNotificationOpen(true); // Show success notification
       setDrawerCloseNotificationOpen(true); // Show snackbar when drawer closes

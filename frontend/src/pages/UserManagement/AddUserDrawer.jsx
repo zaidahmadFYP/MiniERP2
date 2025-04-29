@@ -42,10 +42,10 @@ const headquarterRoles = [
 const branchRoles = ['Cashier', 'Manager'];
 
 const modules = [
-  { main: 'Retail and Commerce', subModules: ['Store Transactions', 'POS Configuration', 'Reports'] },
+  { main: 'Retail and Commerce', subModules: ['Store Transactions', 'POS Configuration', 'Reporting'] },
   { main: 'Product Information and Configuration', subModules: ['Product Addition','Product Categories','SKU Management','Product Pricing'] },
   { main: 'Inventory Management', subModules: ['Stock Management', 'Warehouse Management','Stock Movements & Adjustments'] },
-  { main: 'Finance and Sales', subModules: ['Sales Order','Billing and Payments','Tax Configurations'] },
+  { main: 'Finance and Sales', subModules: ['Accounts Payable','Accounts Receievable','Bank Management','Tax Configuration','Reporting'] },
   { main: 'Reports and Analytics', subModules: ['Sales Report', 'Inventory Report', 'Financial Analytics'] },
   { main: 'User Management', subModules: [] },
 ];
@@ -422,7 +422,7 @@ const AddUserDrawer = ({ open, onClose, onUserCreated }) => {
     };
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/users`, {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/auth`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

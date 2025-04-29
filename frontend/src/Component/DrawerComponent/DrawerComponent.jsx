@@ -90,38 +90,39 @@ export default function DrawerComponent({
     });
   };
 
-  // Sample items array
+  //  items array
   const items = [
     {
       text: 'Retail and Commerce',
-      icon: '/images/licenses.webp',
-      path: '/Licenses/Licensepage',
+      icon: '/images/retail_and_commerce.png',
+      path: '/RetailCommerce/',
       submenu: [
-        { text: 'Trade Licenses', path: '/Licenses/Licensepage' },
-        { text: 'Staff Medicals', path: '/Licenses/Licensepage' },
-        { text: 'Tourism Licenses', path: '/Licenses/Licensepage' },
-        { text: 'Labour Licenses', path: '/Licenses/Licensepage' },
+        { text: 'Store Transactions', path: '/RetailCommerce/StoreTransactions' },
+        { text: 'POS Configuration', path: '/RetailCommerce/PosConfiguration/' },
+        { text: 'Reporting', path: '/RetailCommerce/Reporting/' },
       ],
     },
     {
-      text: 'Product Information and Management',
-      icon: '/images/approved.webp',
+      text: 'Product Information and Configuration',
+      icon: '/images/product_management.png',
       path: '/Approval/Approvalpage',
       submenu: [{ text: 'Outer Spaces', path: '/Approval/Approvalpage' }],
     },
     {
       text: 'Finance and Sales',
-      icon: '/images/vehicle.webp',
-      path: '/Vehicles/Vehiclepage',
+      icon: '/images/finance_and_sales.png',
+      path: '/FinanceandSales',
       submenu: [
-        { text: 'Maintenance', path: '/Vehicles/Vehiclepage' },
-        { text: 'Token Taxes', path: '/Vehicles/Vehiclepage' },
-        { text: 'Route Permits', path: '/Vehicles/Vehiclepage' },
+        { text: 'Accounts Payable', path: '/FinanceandSales/' },
+        { text: 'Accounts Recievable', path: '/FinanceandSales/' },
+        { text: 'Bank Management', path: '/FinanceandSales/' },
+        { text: 'Tax Configuration', path: '/FinanceandSales/' },
+        { text: 'Reporting', path: '/FinanceandSales/' },
       ],
     },
     {
-      text: 'Health Safety Environment',
-      icon: '/images/hse.webp',
+      text: 'Inventory Management',
+      icon: '/images/inventory_management.png',
       path: '/Hse/Hse',
       submenu: [
         { text: 'Monthly Inspection', path: '/Hse/MonthlyInspection' },
@@ -131,11 +132,19 @@ export default function DrawerComponent({
         { text: 'Incidents', path: '/Hse/Hse/incidents' },
       ],
     },
-    
-   //User Managament
+    {
+      text: 'Reports and Analytics',
+      icon: '/images/report_and_analytics.png',
+      path: '/Vehicles/Vehiclepage',
+      submenu: [
+        { text: 'Maintenance', path: '/Vehicles/Vehiclepage' },
+        { text: 'Token Taxes', path: '/Vehicles/Vehiclepage' },
+        { text: 'Route Permits', path: '/Vehicles/Vehiclepage' },
+      ],
+    },
     {
       text: 'User Management',
-      icon: '/images/user_management.webp',
+      icon: '/images/user_management.png',
       path: '/UserManagement',
     },
 

@@ -10,17 +10,17 @@ import Tooltip from '@mui/material/Tooltip';
 const modules = [
   {
     name: 'Store Transactions',
-    image: '/images/1.png',
+    image: '/images/store_transactions.png',
     path: '/RetailCommerce/StoreTransactions/',
   },
   {
     name: 'POS Configuration',
-    image: '/images/2.png',
+    image: '/images/pos_config.png',
     path: '/RetailCommerce/PosConfiguration/',
   },
   {
     name: 'Reporting',
-    image: '/images/3.png',
+    image: '/images/report.png',
     path: '/RetailCommerce/Reporting/',
   },
 ];
@@ -44,30 +44,30 @@ const ModulesGrid = ({ user }) => {
               <Paper
                 aria-label={`Navigate to ${module.name}`}
                 sx={{
-                  padding: 1.5, // Slightly increased for balance
+                  padding: 1.5,
                   cursor: 'pointer',
-                  transition: 'all 0.3s ease-in-out', // Smoother transition
+                  transition: 'all 0.3s ease-in-out',
                   position: 'relative',
-                  height: { xs: '70px', sm: '80px', md: '90px' }, // Slightly taller for better spacing
+                  height: { xs: '70px', sm: '80px', md: '90px' },
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'flex-start',
                   boxShadow: isDarkMode
                     ? '0 6px 20px rgba(0, 0, 0, 0.4)'
-                    : '0 6px 20px rgba(0, 0, 0, 0.15)', // Softer, deeper shadow
-                  borderRadius: '12px', // Slightly rounder corners
+                    : '0 6px 20px rgba(0, 0, 0, 0.15)',
+                  borderRadius: '12px',
                   background: isDarkMode
                     ? 'linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%)'
-                    : 'linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%)', // Subtle gradient
-                  border: isDarkMode ? '1px solid #444' : '1px solid #e0e0e0', // Subtle border
+                    : 'linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%)',
+                  border: isDarkMode ? '1px solid #444' : '1px solid #e0e0e0',
                   '&:hover': {
-                    transform: 'translateY(-4px) scale(1.03)', // Lift and slight scale
+                    transform: 'translateY(-4px) scale(1.03)',
                     boxShadow: isDarkMode
                       ? '0 10px 30px rgba(0, 0, 0, 0.5)'
-                      : '0 10px 30px rgba(0, 0, 0, 0.2)', // Glow effect
+                      : '0 10px 30px rgba(0, 0, 0, 0.2)',
                     background: isDarkMode
                       ? 'linear-gradient(135deg, #3a3a3a 0%, #4a4a4a 100%)'
-                      : 'linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%)', // Reverse gradient on hover
+                      : 'linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%)',
                   },
                 }}
                 onClick={() => handleTileClick(module.path)}
@@ -76,33 +76,45 @@ const ModulesGrid = ({ user }) => {
                   sx={{
                     display: 'flex',
                     alignItems: 'center',
-                    paddingLeft: { xs: 1, sm: 1.5 }, // Adjusted for balance
+                    paddingLeft: { xs: 1, sm: 1.5 },
                     width: '100%',
                   }}
                 >
-                  <img
-                    src={module.image}
-                    alt={module.name}
-                    style={{
-                      width: '48px', // Slightly larger for visibility
+                  <Box
+                    sx={{
+                      width: '48px',
                       height: '48px',
-                      marginRight: '20px', // More space for elegance
-                      borderRadius: '50%', // Circular images
+                      marginRight: '20px',
+                      borderRadius: '50%',
                       border: isDarkMode
                         ? '2px solid #f15a22'
-                        : '2px solid #e0e0e0', // Accent border
-                      objectFit: 'cover', // Ensure image fits nicely
+                        : '2px solid #e0e0e0',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      backgroundColor: isDarkMode ? '#333' : '#f9f9f9',
+                      overflow: 'hidden',
                     }}
-                  />
+                  >
+                    <img
+                      src={module.image}
+                      alt={module.name}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        objectFit: 'contain',
+                      }}
+                    />
+                  </Box>
                   <Typography
                     variant="body1"
                     sx={{
-                      fontSize: { xs: '14px', sm: '16px' }, // Slightly larger for readability
-                      fontWeight: '600', // Bold but refined
+                      fontSize: { xs: '14px', sm: '16px' },
+                      fontWeight: '600',
                       fontFamily: 'Encode Sans, Arial, sans-serif',
-                      color: isDarkMode ? '#f5f5f5' : '#f15a22', // Orange for light mode to tie with heading
-                      letterSpacing: '0.5px', // Subtle spacing
-                      textTransform: 'uppercase', // Modern touch
+                      color: isDarkMode ? '#f5f5f5' : '#f15a22',
+                      letterSpacing: '0.5px',
+                      textTransform: 'uppercase',
                     }}
                   >
                     {module.name}
