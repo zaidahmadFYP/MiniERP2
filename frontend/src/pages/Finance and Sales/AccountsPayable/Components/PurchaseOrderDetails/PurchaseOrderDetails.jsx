@@ -1,7 +1,3 @@
-"use client"
-
-//import { Checkbox } from "@/components/ui/checkbox"
-
 import { useState, useEffect } from "react"
 import {
   Checkbox,

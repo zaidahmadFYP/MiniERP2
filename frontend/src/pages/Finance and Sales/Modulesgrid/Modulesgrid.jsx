@@ -16,17 +16,17 @@ const modules = [
   {
     name: 'Accounts Recievable',
     image: '/images/recievable.png',
-    path: '/FinanceandSales/',
+    path: '/FinanceandSales/AccountsRecievable',
   },
   {
     name: 'Bank Management',
     image: '/images/bank.png',
-    path: '/FinanceandSales/',
+    path: '/FinanceandSales/BankManagement',
   },
   {
-    name: 'Reports',
+    name: 'Reporting',
     image: '/images/report.png',
-    path: '/FinanceandSales/',
+    path: '/FinanceandSales/Reporting',
   },
 ];
 

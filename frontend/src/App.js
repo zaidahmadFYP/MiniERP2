@@ -22,11 +22,18 @@ import RetailCommerce from "./pages/RetailCommerce/RetailCommerce";
 
 // User Management Imports
 import ActiveUsers from "./pages/UserManagement/ActiveUsers";
+
+// Retail and Commerce Imports
 import StoreTransaction from "./pages/RetailCommerce/StoreTransaction/StoreTransaction";
 import PosConfiguration from "./pages/RetailCommerce/PosConfiguration/PosConfiguration";
 import Reporting from "./pages/RetailCommerce/Reporting/Reporting";
+
+// Finance And Sales Imports 
 import FinanceAndSales from "./pages/Finance and Sales/FinanceAndSales";
 import AccountsPayable from "./pages/Finance and Sales/AccountsPayable/AccountsPayable";
+import AccountsReceivable from "./pages/Finance and Sales/Accounts Recievable/AccountsRecievable";
+import BankManagement from "./pages/Finance and Sales/Bank Management/BankManagement";
+import FinanceReport from "./pages/Finance and Sales/FinanceReport/FinanceReport";
 
 function App() {
   // ------------ Authentication ------------
@@ -368,9 +375,38 @@ function App() {
             }
           />
 
+          <Route
+            path="/FinanceandSales/AccountsRecievable"
+            element={
+              isAuthenticated ? (
+                <AccountsReceivable user={user} />
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
 
+          <Route
+            path="/FinanceandSales/BankManagement"
+            element={
+              isAuthenticated ? (
+                <BankManagement user={user} />
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
 
-          
+            <Route
+            path="/FinanceandSales/Reporting"
+            element={
+              isAuthenticated ? (
+                <FinanceReport user={user} />
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
 
 
 

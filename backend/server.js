@@ -21,6 +21,7 @@ const userRoutes = require("./routes/userRoutes")
 const posconfigRoutes = require("./routes/posconfigRoutes")
 const vendorRoutes = require("./routes/vendorRoutes")
 const poRoutes = require("./routes/poRoutes") // Import purchase order routes
+const bankRoutes = require("./routes/bankRoutes")
 
 // Initialize Express application
 const app = express()
@@ -78,6 +79,7 @@ app.use("/api/transactions", transactionRoutes)
 app.use("/api/posconfig", posconfigRoutes)
 app.use("/api/vendors", vendorRoutes)
 app.use("/api/purchase-orders", poRoutes) // Register purchase order routes
+app.use("/api/banks", require("./routes/bankRoutes"))
 
 /**
  * Default route for API health check
