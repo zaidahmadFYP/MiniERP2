@@ -8,10 +8,9 @@ import {
   Business as BusinessIcon,
 } from "@mui/icons-material"
 import { useTheme } from "@mui/material/styles"
-import MainContentWrapper from "./Components/MainContentWrapper"
 
 // Import components
-// Import components
+import MainContentWrapper from "./Components/MainContentWrapper"
 import BankForm from "./Components/BankForm"
 import SearchFilter from "./Components/SearchFilter"
 import BankList from "./Components/BankList"

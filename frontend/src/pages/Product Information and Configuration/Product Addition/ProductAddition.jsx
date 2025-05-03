@@ -724,7 +724,7 @@ const ProductAddition = () => {
                       },
                     }}
                   >
-                    Product Management
+                    Product Addition
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                     Manage your menu items, prices, ingredients, and inventory
@@ -1027,17 +1027,17 @@ const ProductAddition = () => {
                     color: THEME_COLOR,
                     width: 40,
                     height: 40,
-                    mr: 1.5,
+                    mr: 0,
                   }}
                 >
                   <ShoppingBasketIcon fontSize="small" />
                 </Avatar>
               </Badge>
               <Box>
-                <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+                <Typography variant="h6" sx={{ fontWeight: "bold", ml: 2 }}>
                   Product Inventory
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
                   {filteredProducts.length} of {stats.totalProducts} products
                 </Typography>
               </Box>
@@ -1071,7 +1071,7 @@ const ProductAddition = () => {
                   maxWidth: { xs: "100%", md: "300px" },
                 }}
               />
-              <Button
+              {/* <Button
                 variant="outlined"
                 startIcon={<AddIcon />}
                 onClick={handleClickOpen}
@@ -1091,7 +1091,7 @@ const ProductAddition = () => {
                 }}
               >
                 ADD PRODUCT
-              </Button>
+              </Button> */}
             </Box>
           </Box>
 
