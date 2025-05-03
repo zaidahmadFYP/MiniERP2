@@ -1,0 +1,2749 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  Box,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
+  Snackbar,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TablePagination,
+  TableSortLabel,
+  TextField,
+  Typography,
+  Alert,
+  IconButton,
+  Tooltip,
+  Chip,
+  Divider,
+  useTheme,
+  alpha,
+  Fade,
+  Checkbox,
+  InputAdornment,
+  Slider,
+  Menu,
+  ListItemIcon,
+  ListItemText,
+  Collapse,
+  Switch,
+  FormControlLabel,
+  Badge,
+  Grid,
+  Drawer,
+  Tabs,
+  Tab,
+  OutlinedInput
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import InventoryIcon from '@mui/icons-material/Inventory';
+import CategoryIcon from '@mui/icons-material/Category';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import RestaurantIcon from '@mui/icons-material/Restaurant';
+import SearchIcon from '@mui/icons-material/Search';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import SortIcon from '@mui/icons-material/Sort';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import CloseIcon from '@mui/icons-material/Close';
+import CheckIcon from '@mui/icons-material/Check';
+import WarningIcon from '@mui/icons-material/Warning';
+import ErrorIcon from '@mui/icons-material/Error';
+import TuneIcon from '@mui/icons-material/Tune';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
+import RemoveShoppingCartIcon from '@mui/icons-material/RemoveShoppingCart';
+import axios from 'axios';
+import MainContentWrapper from './MainContentWrapper';
+
+// Set up axios with the base URL from environment variables
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5002/api';
+axios.defaults.baseURL = API_BASE_URL;
+
+// Define the primary color from the provided hex
+const PRIMARY_COLOR = '#f15a22';
+
+const ProductAddition = () => {
+  const theme = useTheme();
+  
+  // State for products and categories
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // State for form handling
+  const [open, setOpen] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [currentProduct, setCurrentProduct] = useState({
+    id: '',
+    name: '',
+    price: 0,
+    stock: 0,
+    category: '',
+    rawIngredients: []
+  });
+  
+  // State for raw ingredient form
+  const [showIngredientForm, setShowIngredientForm] = useState(false);
+  const [currentIngredient, setCurrentIngredient] = useState({
+    RawID: '',
+    Name: '',
+    RawConsume: 0,
+    UnitMeasure: 'g'
+  });
+  
+  // State for notifications
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
+
+  // State for table pagination
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  // State for table sorting
+  const [order, setOrder] = useState('asc');
+  const [orderBy, setOrderBy] = useState('name');
+
+  // State for filters
+  const [filters, setFilters] = useState({
+    search: '',
+    category: 'all',
+    stockStatus: 'all',
+    priceRange: [0, 1000],
+    showFilters: false
+  });
+
+  // State for bulk actions
+  const [selected, setSelected] = useState([]);
+  const [actionMenuAnchor, setActionMenuAnchor] = useState(null);
+
+  // State for quick stock adjustment
+  const [stockDialog, setStockDialog] = useState({
+    open: false,
+    productId: null,
+    currentStock: 0,
+    newStock: 0
+  });
+
+  // State for confirmation dialog
+  const [confirmDialog, setConfirmDialog] = useState({
+    open: false,
+    title: '',
+    message: '',
+    confirmAction: null
+  });
+
+  // State for advanced filters drawer
+  const [filterDrawer, setFilterDrawer] = useState(false);
+  const [filterTab, setFilterTab] = useState(0);
+
+  // State for table view options
+  const [viewOptions, setViewOptions] = useState({
+    compactView: false,
+    showIngredients: true,
+    highlightLowStock: true
+  });
+
+  // Fetch data on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch categories and products in parallel
+        const [categoriesResponse, productsResponse] = await Promise.all([
+          axios.get('/menu/categories'),
+          axios.get('/menu/finishedgoods')
+        ]);
+        
+        setCategories(categoriesResponse.data);
+        setProducts(productsResponse.data);
+
+        // Set max price range based on products
+        if (productsResponse.data.length > 0) {
+          const maxPrice = Math.max(...productsResponse.data.map(p => p.price)) * 1.5;
+          setFilters(prev => ({
+            ...prev,
+            priceRange: [0, Math.ceil(maxPrice)]
+          }));
+        }
+
+        setLoading(false);
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        setError(`Failed to load data: ${err.message}`);
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, []);
+
+  // Handle dialog open/close
+  const handleClickOpen = () => {
+    setOpen(true);
+    setEditMode(false);
+    setCurrentProduct({
+      id: generateId(),
+      name: '',
+      price: 0,
+      stock: 0,
+      category: categories.length > 0 ? categories[0]._id : '',
+      rawIngredients: []
+    });
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+    setShowIngredientForm(false);
+  };
+
+  // Generate a unique ID for new products
+  const generateId = () => {
+    return 'FG' + Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+  };
+
+  // Handle form input changes
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    
+    // Convert price and stock to numbers
+    if (name === 'price' || name === 'stock') {
+      setCurrentProduct({
+        ...currentProduct,
+        [name]: parseFloat(value) || 0
+      });
+    } else {
+      setCurrentProduct({
+        ...currentProduct,
+        [name]: value
+      });
+    }
+  };
+
+  // Handle ingredient form input changes
+  const handleIngredientChange = (e) => {
+    const { name, value } = e.target;
+    
+    if (name === 'RawConsume') {
+      setCurrentIngredient({
+        ...currentIngredient,
+        [name]: parseFloat(value) || 0
+      });
+    } else if (name === 'RawID') {
+      setCurrentIngredient({
+        ...currentIngredient,
+        [name]: parseInt(value) || 0
+      });
+    } else {
+      setCurrentIngredient({
+        ...currentIngredient,
+        [name]: value
+      });
+    }
+  };
+
+  // Add ingredient to current product
+  const addIngredient = () => {
+    // Validate ingredient
+    if (!currentIngredient.RawID || !currentIngredient.Name || currentIngredient.RawConsume <= 0) {
+      setSnackbar({
+        open: true,
+        message: 'Please fill all ingredient fields correctly',
+        severity: 'error'
+      });
+      return;
+    }
+    
+    // Add ingredient to current product
+    setCurrentProduct({
+      ...currentProduct,
+      rawIngredients: [...currentProduct.rawIngredients, { ...currentIngredient }]
+    });
+    
+    // Reset ingredient form
+    setCurrentIngredient({
+      RawID: '',
+      Name: '',
+      RawConsume: 0,
+      UnitMeasure: 'g'
+    });
+    
+    setShowIngredientForm(false);
+  };
+
+  // Remove ingredient from current product
+  const removeIngredient = (index) => {
+    const updatedIngredients = [...currentProduct.rawIngredients];
+    updatedIngredients.splice(index, 1);
+    
+    setCurrentProduct({
+      ...currentProduct,
+      rawIngredients: updatedIngredients
+    });
+  };
+
+  // Handle form submission
+  const handleSubmit = async () => {
+    try {
+      // Validate form
+      if (!currentProduct.id || !currentProduct.name || currentProduct.price < 0 || !currentProduct.category) {
+        setSnackbar({
+          open: true,
+          message: 'Please fill all required fields',
+          severity: 'error'
+        });
+        return;
+      }
+      
+      if (editMode) {
+        // Update existing product
+        await axios.put(`/menu/finishedgoods/${currentProduct._id}`, currentProduct);
+        
+        // Update local state
+        setProducts(products.map(product => 
+          product._id === currentProduct._id ? currentProduct : product
+        ));
+        
+        setSnackbar({
+          open: true,
+          message: 'Product updated successfully',
+          severity: 'success'
+        });
+      } else {
+        // Create new product
+        const response = await axios.post('/menu/finishedgoods', currentProduct);
+        
+        // Update local state with the response that includes the MongoDB _id
+        setProducts([...products, response.data]);
+        
+        setSnackbar({
+          open: true,
+          message: 'Product added successfully',
+          severity: 'success'
+        });
+      }
+      
+      handleClose();
+    } catch (err) {
+      console.error('Error saving product:', err);
+      setSnackbar({
+        open: true,
+        message: `Failed to save product: ${err.message}`,
+        severity: 'error'
+      });
+    }
+  };
+
+  // Handle edit product
+  const handleEdit = (product) => {
+    setCurrentProduct(product);
+    setEditMode(true);
+    setOpen(true);
+  };
+
+  // Handle delete product
+  const handleDelete = (id) => {
+    setConfirmDialog({
+      open: true,
+      title: 'Delete Product',
+      message: 'Are you sure you want to delete this product? This action cannot be undone.',
+      confirmAction: async () => {
+        try {
+          await axios.delete(`/menu/finishedgoods/${id}`);
+          
+          // Update local state
+          setProducts(products.filter(product => product._id !== id));
+          
+          setSnackbar({
+            open: true,
+            message: 'Product deleted successfully',
+            severity: 'success'
+          });
+        } catch (err) {
+          console.error('Error deleting product:', err);
+          setSnackbar({
+            open: true,
+            message: `Failed to delete product: ${err.message}`,
+            severity: 'error'
+          });
+        }
+        setConfirmDialog({ ...confirmDialog, open: false });
+      }
+    });
+  };
+
+  // Handle bulk delete
+  const handleBulkDelete = () => {
+    if (selected.length === 0) return;
+    
+    setConfirmDialog({
+      open: true,
+      title: 'Delete Products',
+      message: `Are you sure you want to delete ${selected.length} selected products? This action cannot be undone.`,
+      confirmAction: async () => {
+        try {
+          // Delete all selected products in parallel
+          await Promise.all(selected.map(id => 
+            axios.delete(`/menu/finishedgoods/${id}`)
+          ));
+          
+          // Update local state
+          setProducts(products.filter(product => !selected.includes(product._id)));
+          
+          setSnackbar({
+            open: true,
+            message: `${selected.length} products deleted successfully`,
+            severity: 'success'
+          });
+          
+          // Clear selection
+          setSelected([]);
+        } catch (err) {
+          console.error('Error deleting products:', err);
+          setSnackbar({
+            open: true,
+            message: `Failed to delete products: ${err.message}`,
+            severity: 'error'
+          });
+        }
+        setConfirmDialog({ ...confirmDialog, open: false });
+        setActionMenuAnchor(null);
+      }
+    });
+  };
+
+  // Handle duplicate product
+  const handleDuplicate = (product) => {
+    const duplicatedProduct = {
+      ...product,
+      id: generateId(),
+      name: `${product.name} (Copy)`,
+      _id: undefined
+    };
+    
+    setCurrentProduct(duplicatedProduct);
+    setEditMode(false);
+    setOpen(true);
+  };
+
+  // Handle quick stock adjustment
+  const openStockDialog = (product) => {
+    setStockDialog({
+      open: true,
+      productId: product._id,
+      currentStock: product.stock,
+      newStock: product.stock
+    });
+  };
+
+  const handleStockChange = (e) => {
+    setStockDialog({
+      ...stockDialog,
+      newStock: parseInt(e.target.value) || 0
+    });
+  };
+
+  const submitStockChange = async () => {
+    try {
+      const product = products.find(p => p._id === stockDialog.productId);
+      if (!product) return;
+      
+      const updatedProduct = {
+        ...product,
+        stock: stockDialog.newStock
+      };
+      
+      await axios.put(`/menu/finishedgoods/${product._id}`, updatedProduct);
+      
+      // Update local state
+      setProducts(products.map(p => 
+        p._id === product._id ? updatedProduct : p
+      ));
+      
+      setSnackbar({
+        open: true,
+        message: `Stock updated for ${product.name}`,
+        severity: 'success'
+      });
+      
+      setStockDialog({
+        ...stockDialog,
+        open: false
+      });
+    } catch (err) {
+      console.error('Error updating stock:', err);
+      setSnackbar({
+        open: true,
+        message: `Failed to update stock: ${err.message}`,
+        severity: 'error'
+      });
+    }
+  };
+
+  // Close snackbar
+  const handleSnackbarClose = () => {
+    setSnackbar({
+      ...snackbar,
+      open: false
+    });
+  };
+
+  // Get category name by ID
+  const getCategoryName = (categoryId) => {
+    const category = categories.find(cat => cat._id === categoryId);
+    return category ? category.name : 'Uncategorized';
+  };
+
+  // Get stock status chip
+  const getStockStatusChip = (stock) => {
+    if (stock <= 0) {
+      return <Chip 
+        label="Out of Stock" 
+        size="small" 
+        color="error" 
+        sx={{ 
+          fontWeight: 500,
+          backgroundColor: alpha('#f15a22', 0.9),
+          color: '#fff'
+        }}
+      />;
+    } else if (stock < 10) {
+      return <Chip 
+        label="Low Stock" 
+        size="small" 
+        color="warning" 
+        sx={{ 
+          fontWeight: 500,
+          backgroundColor: alpha('#f15a22', 0.6),
+          color: '#fff'
+        }}
+      />;
+    } else {
+      return <Chip 
+        label="In Stock" 
+        size="small" 
+        color="success" 
+        sx={{ fontWeight: 500 }}
+      />;
+    }
+  };
+
+  // Handle table sorting
+  const handleRequestSort = (property) => {
+    const isAsc = orderBy === property && order === 'asc';
+    setOrder(isAsc ? 'desc' : 'asc');
+    setOrderBy(property);
+  };
+
+  // Handle table pagination
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  // Handle filter changes
+  const handleFilterChange = (name, value) => {
+    setFilters({
+      ...filters,
+      [name]: value
+    });
+    setPage(0); // Reset to first page when filters change
+  };
+
+  // Handle selection
+  const handleSelectAllClick = (event) => {
+    if (event.target.checked) {
+      const newSelected = filteredProducts.map(product => product._id);
+      setSelected(newSelected);
+      return;
+    }
+    setSelected([]);
+  };
+
+  const handleSelectClick = (event, id) => {
+    const selectedIndex = selected.indexOf(id);
+    let newSelected = [];
+
+    if (selectedIndex === -1) {
+      newSelected = [...selected, id];
+    } else {
+      newSelected = selected.filter(itemId => itemId !== id);
+    }
+
+    setSelected(newSelected);
+  };
+
+  const isSelected = (id) => selected.indexOf(id) !== -1;
+
+  // Handle bulk actions menu
+  const handleActionMenuOpen = (event) => {
+    setActionMenuAnchor(event.currentTarget);
+  };
+
+  const handleActionMenuClose = () => {
+    setActionMenuAnchor(null);
+  };
+
+  // Export to CSV
+  const exportToCSV = () => {
+    // Get visible products based on filters
+    const dataToExport = filteredProducts;
+    
+    // Create CSV content
+    const headers = ['ID', 'Name', 'Price', 'Stock', 'Category', 'Ingredients'];
+    const csvContent = [
+      headers.join(','),
+      ...dataToExport.map(product => [
+        product.id,
+        `"${product.name.replace(/"/g, '""')}"`, // Escape quotes in CSV
+        product.price,
+        product.stock,
+        `"${product.categoryName || getCategoryName(product.category)}"`,
+        `"${product.rawIngredients.length} ingredients"`
+      ].join(','))
+    ].join('\n');
+    
+    // Create download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `products_export_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    setActionMenuAnchor(null);
+    
+    setSnackbar({
+      open: true,
+      message: `Exported ${dataToExport.length} products to CSV`,
+      severity: 'success'
+    });
+  };
+
+  // Refresh data
+  const refreshData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch categories and products in parallel
+      const [categoriesResponse, productsResponse] = await Promise.all([
+        axios.get('/menu/categories'),
+        axios.get('/menu/finishedgoods')
+      ]);
+      
+      setCategories(categoriesResponse.data);
+      setProducts(productsResponse.data);
+      setLoading(false);
+      
+      setSnackbar({
+        open: true,
+        message: 'Data refreshed successfully',
+        severity: 'success'
+      });
+    } catch (err) {
+      console.error('Error refreshing data:', err);
+      setError(`Failed to refresh data: ${err.message}`);
+      setLoading(false);
+      
+      setSnackbar({
+        open: true,
+        message: `Failed to refresh data: ${err.message}`,
+        severity: 'error'
+      });
+    }
+  };
+
+  // Toggle view options
+  const handleViewOptionChange = (option) => {
+    setViewOptions({
+      ...viewOptions,
+      [option]: !viewOptions[option]
+    });
+  };
+
+  // Filter and sort products
+  const filteredProducts = useMemo(() => {
+    return products
+      .filter(product => {
+        // Search filter
+        const searchMatch = filters.search === '' || 
+          product.name.toLowerCase().includes(filters.search.toLowerCase()) ||
+          product.id.toLowerCase().includes(filters.search.toLowerCase());
+        
+        // Category filter
+        const categoryMatch = filters.category === 'all' || 
+          product.category === filters.category;
+        
+        // Stock status filter
+        let stockMatch = true;
+        if (filters.stockStatus === 'inStock') {
+          stockMatch = product.stock > 10;
+        } else if (filters.stockStatus === 'lowStock') {
+          stockMatch = product.stock > 0 && product.stock <= 10;
+        } else if (filters.stockStatus === 'outOfStock') {
+          stockMatch = product.stock <= 0;
+        }
+        
+        // Price range filter
+        const priceMatch = product.price >= filters.priceRange[0] && 
+          product.price <= filters.priceRange[1];
+        
+        return searchMatch && categoryMatch && stockMatch && priceMatch;
+      })
+      .sort((a, b) => {
+        // Sort by selected column
+        const aValue = a[orderBy];
+        const bValue = b[orderBy];
+        
+        if (orderBy === 'category') {
+          const aCategory = getCategoryName(a.category);
+          const bCategory = getCategoryName(b.category);
+          return order === 'asc' 
+            ? aCategory.localeCompare(bCategory)
+            : bCategory.localeCompare(aCategory);
+        }
+        
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          return order === 'asc' 
+            ? aValue.localeCompare(bValue)
+            : bValue.localeCompare(aValue);
+        }
+        
+        return order === 'asc' 
+          ? aValue - bValue
+          : bValue - aValue;
+      });
+  }, [products, filters, order, orderBy, categories]);
+
+  // Paginate products
+  const paginatedProducts = useMemo(() => {
+    return filteredProducts.slice(
+      page * rowsPerPage,
+      page * rowsPerPage + rowsPerPage
+    );
+  }, [filteredProducts, page, rowsPerPage]);
+
+  // Calculate statistics
+  const stats = useMemo(() => {
+    const totalProducts = products.length;
+    const lowStockCount = products.filter(p => p.stock > 0 && p.stock <= 10).length;
+    const outOfStockCount = products.filter(p => p.stock <= 0).length;
+    const totalValue = products.reduce((sum, p) => sum + (p.price * p.stock), 0);
+    
+    return {
+      totalProducts,
+      lowStockCount,
+      outOfStockCount,
+      totalValue
+    };
+  }, [products]);
+
+  if (loading) {
+    return (
+      <MainContentWrapper open={true}>
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: 'column',
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          height: '100%' 
+        }}>
+          <CircularProgress 
+            size={60} 
+            thickness={4} 
+            sx={{ color: PRIMARY_COLOR }}
+          />
+          <Typography variant="h6" sx={{ mt: 2, fontWeight: 500 }}>
+            Loading Products...
+          </Typography>
+        </Box>
+      </MainContentWrapper>
+    );
+  }
+
+  if (error) {
+    return (
+      <MainContentWrapper open={true}>
+        <Box sx={{ 
+          p: 3, 
+          display: 'flex', 
+          flexDirection: 'column',
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          height: '100%' 
+        }}>
+          <Alert 
+            severity="error" 
+            variant="filled"
+            sx={{ 
+              width: '100%', 
+              maxWidth: 600,
+              boxShadow: theme.shadows[3]
+            }}
+          >
+            <Typography variant="subtitle1" fontWeight={500}>
+              {error}
+            </Typography>
+            <Button 
+              color="inherit" 
+              size="small" 
+              sx={{ mt: 1 }}
+              onClick={() => window.location.reload()}
+            >
+              Retry
+            </Button>
+          </Alert>
+        </Box>
+      </MainContentWrapper>
+    );
+  }
+
+  return (
+    <MainContentWrapper open={true}>
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        height: '100%', 
+        overflow: 'auto',
+        pb: 2
+      }}>
+        {/* Header Section */}
+        <Paper 
+          elevation={0}
+          sx={{ 
+            p: 3, 
+            mb: 3, 
+            borderRadius: 2,
+            background: alpha(PRIMARY_COLOR, 0.05),
+            border: `1px solid ${alpha(PRIMARY_COLOR, 0.2)}`
+          }}
+        >
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 2
+          }}>
+            <Box>
+              <Typography 
+                variant="h4" 
+                component="h1" 
+                sx={{ 
+                  fontWeight: 600,
+                  color: PRIMARY_COLOR
+                }}
+              >
+                Product Management
+              </Typography>
+              <Typography 
+                variant="body1" 
+                color="text.secondary" 
+                sx={{ mt: 0.5 }}
+              >
+                Manage your finished goods inventory and recipes
+              </Typography>
+            </Box>
+            <Button 
+              variant="contained" 
+              color="primary" 
+              startIcon={<AddIcon />}
+              onClick={handleClickOpen}
+              sx={{ 
+                px: 3, 
+                py: 1,
+                fontWeight: 600,
+                backgroundColor: PRIMARY_COLOR,
+                '&:hover': {
+                  backgroundColor: alpha(PRIMARY_COLOR, 0.9),
+                  boxShadow: theme.shadows[8],
+                }
+              }}
+            >
+              Add New Product
+            </Button>
+          </Box>
+        </Paper>
+
+        {/* Stats Cards */}
+        <Box sx={{ mb: 3 }}>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} md={3}>
+              <Paper 
+                elevation={2} 
+                sx={{ 
+                  p: 2, 
+                  borderRadius: 2,
+                  border: `1px solid ${alpha(PRIMARY_COLOR, 0.1)}`,
+                  height: '100%'
+                }}
+              >
+                <Typography variant="subtitle2" color="text.secondary">
+                  Total Products
+                </Typography>
+                <Typography 
+                  variant="h4" 
+                  sx={{ 
+                    fontWeight: 600,
+                    color: PRIMARY_COLOR,
+                    mt: 1
+                  }}
+                >
+                  {stats.totalProducts}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  {filteredProducts.length} shown with current filters
+                </Typography>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Paper 
+                elevation={2} 
+                sx={{ 
+                  p: 2, 
+                  borderRadius: 2,
+                  border: `1px solid ${alpha(PRIMARY_COLOR, 0.1)}`,
+                  height: '100%'
+                }}
+              >
+                <Typography variant="subtitle2" color="text.secondary">
+                  Inventory Status
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                  <Typography 
+                    variant="h4" 
+                    sx={{ 
+                      fontWeight: 600,
+                      color: stats.outOfStockCount > 0 ? 'error.main' : 'success.main',
+                      mr: 1
+                    }}
+                  >
+                    {stats.outOfStockCount}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    out of stock
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                  <Typography 
+                    variant="body1" 
+                    sx={{ 
+                      fontWeight: 600,
+                      color: alpha(PRIMARY_COLOR, 0.8),
+                      mr: 1
+                    }}
+                  >
+                    {stats.lowStockCount}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    low stock items
+                  </Typography>
+                </Box>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Paper 
+                elevation={2} 
+                sx={{ 
+                  p: 2, 
+                  borderRadius: 2,
+                  border: `1px solid ${alpha(PRIMARY_COLOR, 0.1)}`,
+                  height: '100%'
+                }}
+              >
+                <Typography variant="subtitle2" color="text.secondary">
+                  Inventory Value
+                </Typography>
+                <Typography 
+                  variant="h4" 
+                  sx={{ 
+                    fontWeight: 600,
+                    color: PRIMARY_COLOR,
+                    mt: 1
+                  }}
+                >
+                  ${stats.totalValue.toFixed(2)}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  Total value of all products in stock
+                </Typography>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Paper 
+                elevation={2} 
+                sx={{ 
+                  p: 2, 
+                  borderRadius: 2,
+                  border: `1px solid ${alpha(PRIMARY_COLOR, 0.1)}`,
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between'
+                }}
+              >
+                <Typography variant="subtitle2" color="text.secondary">
+                  Quick Actions
+                </Typography>
+                <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <Button 
+                    size="small" 
+                    startIcon={<RefreshIcon />}
+                    onClick={refreshData}
+                    sx={{ 
+                      justifyContent: 'flex-start',
+                      color: PRIMARY_COLOR,
+                      borderColor: alpha(PRIMARY_COLOR, 0.5),
+                      '&:hover': {
+                        borderColor: PRIMARY_COLOR,
+                        backgroundColor: alpha(PRIMARY_COLOR, 0.1)
+                      }
+                    }}
+                    variant="outlined"
+                  >
+                    Refresh Data
+                  </Button>
+                  <Button 
+                    size="small" 
+                    startIcon={<FileDownloadIcon />}
+                    onClick={exportToCSV}
+                    sx={{ 
+                      justifyContent: 'flex-start',
+                      color: PRIMARY_COLOR,
+                      borderColor: alpha(PRIMARY_COLOR, 0.5),
+                      '&:hover': {
+                        borderColor: PRIMARY_COLOR,
+                        backgroundColor: alpha(PRIMARY_COLOR, 0.1)
+                      }
+                    }}
+                    variant="outlined"
+                  >
+                    Export to CSV
+                  </Button>
+                </Box>
+              </Paper>
+            </Grid>
+          </Grid>
+        </Box>
+
+        {/* Search and Filters */}
+        <Paper 
+          elevation={2} 
+          sx={{ 
+            p: 2, 
+            mb: 3, 
+            borderRadius: 2,
+            display: 'flex',
+            flexDirection: { xs: 'column', md: 'row' },
+            alignItems: { xs: 'stretch', md: 'center' },
+            gap: 2
+          }}
+        >
+          <TextField
+            placeholder="Search products by name or ID..."
+            value={filters.search}
+            onChange={(e) => handleFilterChange('search', e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ color: alpha(PRIMARY_COLOR, 0.7) }} />
+                </InputAdornment>
+              ),
+              sx: { 
+                borderRadius: 1.5,
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: alpha(PRIMARY_COLOR, 0.3),
+                },
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: alpha(PRIMARY_COLOR, 0.5),
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: PRIMARY_COLOR,
+                }
+              }
+            }}
+            sx={{ 
+              flexGrow: 1,
+              '& .MuiInputLabel-root.Mui-focused': {
+                color: PRIMARY_COLOR
+              }
+            }}
+            variant="outlined"
+            size="small"
+          />
+          
+          <FormControl 
+            size="small" 
+            sx={{ 
+              minWidth: 150,
+              '& .MuiInputLabel-root.Mui-focused': {
+                color: PRIMARY_COLOR
+              },
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': {
+                  borderColor: alpha(PRIMARY_COLOR, 0.3),
+                },
+                '&:hover fieldset': {
+                  borderColor: alpha(PRIMARY_COLOR, 0.5),
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: PRIMARY_COLOR,
+                }
+              }
+            }}
+          >
+            <InputLabel id="category-filter-label">Category</InputLabel>
+            <Select
+              labelId="category-filter-label"
+              value={filters.category}
+              onChange={(e) => handleFilterChange('category', e.target.value)}
+              label="Category"
+              sx={{ borderRadius: 1.5 }}
+            >
+              <MenuItem value="all">All Categories</MenuItem>
+              {categories.map((category) => (
+                <MenuItem key={category._id} value={category._id}>
+                  {category.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          
+          <FormControl 
+            size="small" 
+            sx={{ 
+              minWidth: 150,
+              '& .MuiInputLabel-root.Mui-focused': {
+                color: PRIMARY_COLOR
+              },
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': {
+                  borderColor: alpha(PRIMARY_COLOR, 0.3),
+                },
+                '&:hover fieldset': {
+                  borderColor: alpha(PRIMARY_COLOR, 0.5),
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: PRIMARY_COLOR,
+                }
+              }
+            }}
+          >
+            <InputLabel id="stock-filter-label">Stock Status</InputLabel>
+            <Select
+              labelId="stock-filter-label"
+              value={filters.stockStatus}
+              onChange={(e) => handleFilterChange('stockStatus', e.target.value)}
+              label="Stock Status"
+              sx={{ borderRadius: 1.5 }}
+            >
+              <MenuItem value="all">All Stock Status</MenuItem>
+              <MenuItem value="inStock">In Stock</MenuItem>
+              <MenuItem value="lowStock">Low Stock</MenuItem>
+              <MenuItem value="outOfStock">Out of Stock</MenuItem>
+            </Select>
+          </FormControl>
+          
+          <Button
+            variant="outlined"
+            startIcon={<TuneIcon />}
+            onClick={() => setFilterDrawer(true)}
+            sx={{ 
+              borderRadius: 1.5,
+              color: PRIMARY_COLOR,
+              borderColor: alpha(PRIMARY_COLOR, 0.5),
+              '&:hover': {
+                borderColor: PRIMARY_COLOR,
+                backgroundColor: alpha(PRIMARY_COLOR, 0.1)
+              }
+            }}
+          >
+            Advanced
+          </Button>
+        </Paper>
+
+        {/* Table Actions */}
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            mb: 2,
+            px: 1
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            {selected.length > 0 ? (
+              <>
+                <Typography variant="subtitle1" sx={{ mr: 2 }}>
+                  {selected.length} selected
+                </Typography>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  color="error"
+                  startIcon={<DeleteIcon />}
+                  onClick={handleBulkDelete}
+                  sx={{ 
+                    mr: 1,
+                    borderRadius: 1.5
+                  }}
+                >
+                  Delete
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<FileDownloadIcon />}
+                  onClick={exportToCSV}
+                  sx={{ 
+                    borderRadius: 1.5,
+                    color: PRIMARY_COLOR,
+                    borderColor: alpha(PRIMARY_COLOR, 0.5),
+                    '&:hover': {
+                      borderColor: PRIMARY_COLOR,
+                      backgroundColor: alpha(PRIMARY_COLOR, 0.1)
+                    }
+                  }}
+                >
+                  Export
+                </Button>
+              </>
+            ) : (
+              <Typography variant="subtitle2" color="text.secondary">
+                {filteredProducts.length} products found
+              </Typography>
+            )}
+          </Box>
+          
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Tooltip title="Toggle compact view">
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={viewOptions.compactView}
+                    onChange={() => handleViewOptionChange('compactView')}
+                    size="small"
+                    sx={{
+                      '& .MuiSwitch-switchBase.Mui-checked': {
+                        color: PRIMARY_COLOR,
+                        '&:hover': {
+                          backgroundColor: alpha(PRIMARY_COLOR, 0.1),
+                        },
+                      },
+                      '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                        backgroundColor: PRIMARY_COLOR,
+                      },
+                    }}
+                  />
+                }
+                label="Compact"
+                sx={{ mr: 1 }}
+              />
+            </Tooltip>
+            
+            <Tooltip title="Toggle ingredient display">
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={viewOptions.showIngredients}
+                    onChange={() => handleViewOptionChange('showIngredients')}
+                    size="small"
+                    sx={{
+                      '& .MuiSwitch-switchBase.Mui-checked': {
+                        color: PRIMARY_COLOR,
+                        '&:hover': {
+                          backgroundColor: alpha(PRIMARY_COLOR, 0.1),
+                        },
+                      },
+                      '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                        backgroundColor: PRIMARY_COLOR,
+                      },
+                    }}
+                  />
+                }
+                label="Ingredients"
+              />
+            </Tooltip>
+          </Box>
+        </Box>
+
+        {/* Products Table */}
+        <Paper 
+          elevation={2} 
+          sx={{ 
+            flexGrow: 1, 
+            overflow: 'hidden',
+            borderRadius: 2,
+            boxShadow: theme.shadows[3],
+            border: `1px solid ${alpha(PRIMARY_COLOR, 0.1)}`
+          }}
+        >
+          <TableContainer sx={{ maxHeight: 'calc(100vh - 380px)' }}>
+            <Table 
+              stickyHeader 
+              aria-label="product table"
+              size={viewOptions.compactView ? 'small' : 'medium'}
+            >
+              <TableHead>
+                <TableRow>
+                  <TableCell padding="checkbox">
+                    <Checkbox
+                      indeterminate={selected.length > 0 && selected.length < filteredProducts.length}
+                      checked={filteredProducts.length > 0 && selected.length === filteredProducts.length}
+                      onChange={handleSelectAllClick}
+                      sx={{
+                        color: alpha(PRIMARY_COLOR, 0.5),
+                        '&.Mui-checked': {
+                          color: PRIMARY_COLOR,
+                        },
+                      }}
+                    />
+                  </TableCell>
+                  <TableCell 
+                    sx={{ 
+                      fontWeight: 600, 
+                      backgroundColor: theme.palette.mode === 'dark' 
+                        ? alpha(theme.palette.background.paper, 0.9)
+                        : alpha(theme.palette.background.paper, 0.9)
+                    }}
+                  >
+                    <TableSortLabel
+                      active={orderBy === 'id'}
+                      direction={orderBy === 'id' ? order : 'asc'}
+                      onClick={() => handleRequestSort('id')}
+                      sx={{
+                        '&.MuiTableSortLabel-active': {
+                          color: PRIMARY_COLOR,
+                        },
+                        '& .MuiTableSortLabel-icon': {
+                          color: `${PRIMARY_COLOR} !important`,
+                        },
+                      }}
+                    >
+                      ID
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell 
+                    sx={{ 
+                      fontWeight: 600, 
+                      backgroundColor: theme.palette.mode === 'dark' 
+                        ? alpha(theme.palette.background.paper, 0.9)
+                        : alpha(theme.palette.background.paper, 0.9)
+                    }}
+                  >
+                    <TableSortLabel
+                      active={orderBy === 'name'}
+                      direction={orderBy === 'name' ? order : 'asc'}
+                      onClick={() => handleRequestSort('name')}
+                      sx={{
+                        '&.MuiTableSortLabel-active': {
+                          color: PRIMARY_COLOR,
+                        },
+                        '& .MuiTableSortLabel-icon': {
+                          color: `${PRIMARY_COLOR} !important`,
+                        },
+                      }}
+                    >
+                      Name
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell 
+                    sx={{ 
+                      fontWeight: 600, 
+                      backgroundColor: theme.palette.mode === 'dark' 
+                        ? alpha(theme.palette.background.paper, 0.9)
+                        : alpha(theme.palette.background.paper, 0.9)
+                    }}
+                  >
+                    <TableSortLabel
+                      active={orderBy === 'price'}
+                      direction={orderBy === 'price' ? order : 'asc'}
+                      onClick={() => handleRequestSort('price')}
+                      sx={{
+                        '&.MuiTableSortLabel-active': {
+                          color: PRIMARY_COLOR,
+                        },
+                        '& .MuiTableSortLabel-icon': {
+                          color: `${PRIMARY_COLOR} !important`,
+                        },
+                      }}
+                    >
+                      Price
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell 
+                    sx={{ 
+                      fontWeight: 600, 
+                      backgroundColor: theme.palette.mode === 'dark' 
+                        ? alpha(theme.palette.background.paper, 0.9)
+                        : alpha(theme.palette.background.paper, 0.9)
+                    }}
+                  >
+                    <TableSortLabel
+                      active={orderBy === 'stock'}
+                      direction={orderBy === 'stock' ? order : 'asc'}
+                      onClick={() => handleRequestSort('stock')}
+                      sx={{
+                        '&.MuiTableSortLabel-active': {
+                          color: PRIMARY_COLOR,
+                        },
+                        '& .MuiTableSortLabel-icon': {
+                          color: `${PRIMARY_COLOR} !important`,
+                        },
+                      }}
+                    >
+                      Stock
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell 
+                    sx={{ 
+                      fontWeight: 600, 
+                      backgroundColor: theme.palette.mode === 'dark' 
+                        ? alpha(theme.palette.background.paper, 0.9)
+                        : alpha(theme.palette.background.paper, 0.9)
+                    }}
+                  >
+                    <TableSortLabel
+                      active={orderBy === 'category'}
+                      direction={orderBy === 'category' ? order : 'asc'}
+                      onClick={() => handleRequestSort('category')}
+                      sx={{
+                        '&.MuiTableSortLabel-active': {
+                          color: PRIMARY_COLOR,
+                        },
+                        '& .MuiTableSortLabel-icon': {
+                          color: `${PRIMARY_COLOR} !important`,
+                        },
+                      }}
+                    >
+                      Category
+                    </TableSortLabel>
+                  </TableCell>
+                  {viewOptions.showIngredients && (
+                    <TableCell 
+                      sx={{ 
+                        fontWeight: 600, 
+                        backgroundColor: theme.palette.mode === 'dark' 
+                          ? alpha(theme.palette.background.paper, 0.9)
+                          : alpha(theme.palette.background.paper, 0.9)
+                      }}
+                    >
+                      Ingredients
+                    </TableCell>
+                  )}
+                  <TableCell 
+                    align="right"
+                    sx={{ 
+                      fontWeight: 600, 
+                      backgroundColor: theme.palette.mode === 'dark' 
+                        ? alpha(theme.palette.background.paper, 0.9)
+                        : alpha(theme.palette.background.paper, 0.9)
+                    }}
+                  >
+                    Actions
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {paginatedProducts.length === 0 ? (
+                  <TableRow>
+                    <TableCell 
+                      colSpan={viewOptions.showIngredients ? 8 : 7} 
+                      align="center" 
+                      sx={{ py: 8 }}
+                    >
+                      <Box sx={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center',
+                        p: 3
+                      }}>
+                        <InventoryIcon sx={{ fontSize: 60, color: alpha(PRIMARY_COLOR, 0.6), mb: 2 }} />
+                        <Typography variant="h6" gutterBottom>
+                          No products found
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3 }}>
+                          {products.length > 0 
+                            ? 'Try adjusting your filters to see more products'
+                            : 'Add your first product to get started with inventory management'}
+                        </Typography>
+                        <Button 
+                          variant="outlined" 
+                          startIcon={<AddIcon />}
+                          onClick={handleClickOpen}
+                          sx={{ 
+                            borderRadius: 1.5,
+                            color: PRIMARY_COLOR,
+                            borderColor: alpha(PRIMARY_COLOR, 0.5),
+                            '&:hover': {
+                              borderColor: PRIMARY_COLOR,
+                              backgroundColor: alpha(PRIMARY_COLOR, 0.1)
+                            }
+                          }}
+                        >
+                          Add New Product
+                        </Button>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  paginatedProducts.map((product) => {
+                    const isItemSelected = isSelected(product._id);
+                    const isLowStock = product.stock > 0 && product.stock <= 10;
+                    const isOutOfStock = product.stock <= 0;
+                    
+                    return (
+                      <TableRow 
+                        key={product._id}
+                        hover
+                        selected={isItemSelected}
+                        sx={{ 
+                          '&:hover': { 
+                            backgroundColor: alpha(PRIMARY_COLOR, 0.05) 
+                          },
+                          '&.Mui-selected': {
+                            backgroundColor: alpha(PRIMARY_COLOR, 0.1),
+                            '&:hover': {
+                              backgroundColor: alpha(PRIMARY_COLOR, 0.15),
+                            }
+                          },
+                          ...(viewOptions.highlightLowStock && isLowStock && !isItemSelected ? {
+                            backgroundColor: alpha('#f15a22', 0.05),
+                          } : {}),
+                          ...(viewOptions.highlightLowStock && isOutOfStock && !isItemSelected ? {
+                            backgroundColor: alpha('#f15a22', 0.1),
+                          } : {})
+                        }}
+                      >
+                        <TableCell padding="checkbox">
+                          <Checkbox
+                            checked={isItemSelected}
+                            onChange={(event) => handleSelectClick(event, product._id)}
+                            sx={{
+                              color: alpha(PRIMARY_COLOR, 0.5),
+                              '&.Mui-checked': {
+                                color: PRIMARY_COLOR,
+                              },
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell sx={{ fontFamily: 'monospace', fontWeight: 500 }}>
+                          {product.id}
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 500 }}>
+                          {product.name}
+                        </TableCell>
+                        <TableCell>
+                          <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center',
+                            color: PRIMARY_COLOR,
+                            fontWeight: 500
+                          }}>
+                            <AttachMoneyIcon fontSize="small" sx={{ mr: 0.5 }} />
+                            {product.price.toFixed(2)}
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography 
+                              variant="body2" 
+                              sx={{ 
+                                mr: 1,
+                                fontWeight: isLowStock || isOutOfStock ? 600 : 400,
+                                color: isOutOfStock 
+                                  ? alpha(PRIMARY_COLOR, 0.9)
+                                  : isLowStock 
+                                    ? alpha(PRIMARY_COLOR, 0.7)
+                                    : 'inherit'
+                              }}
+                            >
+                              {product.stock}
+                            </Typography>
+                            {getStockStatusChip(product.stock)}
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            icon={<CategoryIcon fontSize="small" />}
+                            label={product.categoryName || getCategoryName(product.category)}
+                            size="small"
+                            variant="outlined"
+                            sx={{ 
+                              fontWeight: 500,
+                              borderColor: alpha(PRIMARY_COLOR, 0.5),
+                              color: alpha(PRIMARY_COLOR, 0.8)
+                            }}
+                          />
+                        </TableCell>
+                        {viewOptions.showIngredients && (
+                          <TableCell>
+                            {product.rawIngredients.length > 0 ? (
+                              <Tooltip 
+                                title={
+                                  <Box sx={{ p: 1 }}>
+                                    <Typography variant="subtitle2" gutterBottom>
+                                      Ingredients:
+                                    </Typography>
+                                    {product.rawIngredients.map((ing, idx) => (
+                                      <Typography variant="body2" key={idx}>
+                                        • {ing.Name}: {ing.RawConsume} {ing.UnitMeasure}
+                                      </Typography>
+                                    ))}
+                                  </Box>
+                                }
+                                arrow
+                              >
+                                <Chip
+                                  icon={<RestaurantIcon fontSize="small" />}
+                                  label={`${product.rawIngredients.length} ingredients`}
+                                  size="small"
+                                  color="info"
+                                  variant="outlined"
+                                  sx={{ 
+                                    fontWeight: 500,
+                                    borderColor: alpha(PRIMARY_COLOR, 0.5),
+                                    color: alpha(PRIMARY_COLOR, 0.8)
+                                  }}
+                                />
+                              </Tooltip>
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">
+                                No ingredients
+                              </Typography>
+                            )}
+                          </TableCell>
+                        )}
+                        <TableCell align="right">
+                          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                            <Tooltip title="Edit Product">
+                              <IconButton 
+                                color="primary" 
+                                onClick={() => handleEdit(product)}
+                                size="small"
+                                sx={{ 
+                                  backgroundColor: alpha(PRIMARY_COLOR, 0.1),
+                                  color: PRIMARY_COLOR,
+                                  '&:hover': {
+                                    backgroundColor: alpha(PRIMARY_COLOR, 0.2),
+                                  }
+                                }}
+                              >
+                                <EditIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Adjust Stock">
+                              <IconButton 
+                                onClick={() => openStockDialog(product)}
+                                size="small"
+                                sx={{ 
+                                  backgroundColor: alpha(PRIMARY_COLOR, 0.1),
+                                  color: PRIMARY_COLOR,
+                                  '&:hover': {
+                                    backgroundColor: alpha(PRIMARY_COLOR, 0.2),
+                                  }
+                                }}
+                              >
+                                <InventoryIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Delete Product">
+                              <IconButton 
+                                color="error" 
+                                onClick={() => handleDelete(product._id)}
+                                size="small"
+                                sx={{ 
+                                  backgroundColor: alpha('#f44336', 0.1),
+                                  '&:hover': {
+                                    backgroundColor: alpha('#f44336', 0.2),
+                                  }
+                                }}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="More Actions">
+                              <IconButton 
+                                size="small"
+                                onClick={(e) => {
+                                  setActionMenuAnchor(e.currentTarget);
+                                  setSelected([product._id]);
+                                }}
+                                sx={{ 
+                                  backgroundColor: alpha(theme.palette.text.secondary, 0.1),
+                                  '&:hover': {
+                                    backgroundColor: alpha(theme.palette.text.secondary, 0.2),
+                                  }
+                                }}
+                              >
+                                <MoreVertIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25, 50]}
+            component="div"
+            count={filteredProducts.length}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            sx={{
+              borderTop: `1px solid ${theme.palette.divider}`,
+              '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+                color: theme.palette.text.secondary,
+              },
+              '& .MuiTablePagination-select': {
+                color: PRIMARY_COLOR,
+              },
+              '& .MuiTablePagination-actions button': {
+                color: PRIMARY_COLOR,
+              }
+            }}
+          />
+        </Paper>
+      </Box>
+
+      {/* Add/Edit Product Dialog */}
+      <Dialog 
+        open={open} 
+        onClose={handleClose} 
+        maxWidth="md" 
+        fullWidth
+        TransitionComponent={Fade}
+        transitionDuration={300}
+        PaperProps={{
+          elevation: 24,
+          sx: {
+            borderRadius: 2,
+            overflow: 'hidden'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          px: 3, 
+          py: 2,
+          backgroundColor: alpha(PRIMARY_COLOR, 0.1),
+          borderBottom: `1px solid ${alpha(PRIMARY_COLOR, 0.2)}`
+        }}>
+          <Typography variant="h6" component="div" sx={{ fontWeight: 600, color: PRIMARY_COLOR }}>
+            {editMode ? 'Edit Product' : 'Add New Product'}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {editMode 
+              ? 'Update product details and ingredients' 
+              : 'Fill in the details to add a new product to inventory'}
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ px: 3, py: 4 }}>
+          <Box sx={{ mb: 4 }}>
+            <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600, color: PRIMARY_COLOR }}>
+              Basic Information
+            </Typography>
+            <Box sx={{ 
+              display: 'grid', 
+              gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, 
+              gap: 3
+            }}>
+              <TextField
+                name="id"
+                label="Product ID"
+                value={currentProduct.id}
+                onChange={handleInputChange}
+                fullWidth
+                disabled={editMode}
+                required
+                variant="outlined"
+                InputProps={{
+                  sx: { borderRadius: 1.5 }
+                }}
+                sx={{
+                  '& .MuiInputLabel-root.Mui-focused': {
+                    color: PRIMARY_COLOR
+                  },
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: alpha(PRIMARY_COLOR, 0.3),
+                    },
+                    '&:hover fieldset': {
+                      borderColor: alpha(PRIMARY_COLOR, 0.5),
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: PRIMARY_COLOR,
+                    }
+                  }
+                }}
+              />
+              <TextField
+                name="name"
+                label="Product Name"
+                value={currentProduct.name}
+                onChange={handleInputChange}
+                fullWidth
+                required
+                variant="outlined"
+                InputProps={{
+                  sx: { borderRadius: 1.5 }
+                }}
+                sx={{
+                  '& .MuiInputLabel-root.Mui-focused': {
+                    color: PRIMARY_COLOR
+                  },
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: alpha(PRIMARY_COLOR, 0.3),
+                    },
+                    '&:hover fieldset': {
+                      borderColor: alpha(PRIMARY_COLOR, 0.5),
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: PRIMARY_COLOR,
+                    }
+                  }
+                }}
+              />
+              <TextField
+                name="price"
+                label="Price"
+                type="number"
+                value={currentProduct.price}
+                onChange={handleInputChange}
+                fullWidth
+                required
+                variant="outlined"
+                InputProps={{
+                  startAdornment: '$',
+                  sx: { borderRadius: 1.5 }
+                }}
+                sx={{
+                  '& .MuiInputLabel-root.Mui-focused': {
+                    color: PRIMARY_COLOR
+                  },
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: alpha(PRIMARY_COLOR, 0.3),
+                    },
+                    '&:hover fieldset': {
+                      borderColor: alpha(PRIMARY_COLOR, 0.5),
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: PRIMARY_COLOR,
+                    }
+                  }
+                }}
+              />
+              <TextField
+                name="stock"
+                label="Stock"
+                type="number"
+                value={currentProduct.stock}
+                onChange={handleInputChange}
+                fullWidth
+                variant="outlined"
+                InputProps={{
+                  sx: { borderRadius: 1.5 }
+                }}
+                sx={{
+                  '& .MuiInputLabel-root.Mui-focused': {
+                    color: PRIMARY_COLOR
+                  },
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: alpha(PRIMARY_COLOR, 0.3),
+                    },
+                    '&:hover fieldset': {
+                      borderColor: alpha(PRIMARY_COLOR, 0.5),
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: PRIMARY_COLOR,
+                    }
+                  }
+                }}
+              />
+              <FormControl fullWidth variant="outlined" sx={{
+                '& .MuiInputLabel-root.Mui-focused': {
+                  color: PRIMARY_COLOR
+                },
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': {
+                    borderColor: alpha(PRIMARY_COLOR, 0.3),
+                  },
+                  '&:hover fieldset': {
+                    borderColor: alpha(PRIMARY_COLOR, 0.5),
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: PRIMARY_COLOR,
+                  }
+                }
+              }}>
+                <InputLabel id="category-label">Category</InputLabel>
+                <Select
+                  labelId="category-label"
+                  name="category"
+                  value={currentProduct.category}
+                  onChange={handleInputChange}
+                  required
+                  label="Category"
+                  sx={{ borderRadius: 1.5 }}
+                >
+                  {categories.map((category) => (
+                    <MenuItem key={category._id} value={category._id}>
+                      {category.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+          </Box>
+
+          <Divider sx={{ my: 3, borderColor: alpha(PRIMARY_COLOR, 0.2) }} />
+
+          {/* Raw Ingredients Section */}
+          <Box sx={{ mt: 2 }}>
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              mb: 2 
+            }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: PRIMARY_COLOR }}>
+                Raw Ingredients
+              </Typography>
+              <Button 
+                variant="outlined" 
+                startIcon={<AddIcon />}
+                onClick={() => setShowIngredientForm(true)}
+                size="small"
+                sx={{ 
+                  borderRadius: 1.5,
+                  px: 2,
+                  color: PRIMARY_COLOR,
+                  borderColor: alpha(PRIMARY_COLOR, 0.5),
+                  '&:hover': {
+                    borderColor: PRIMARY_COLOR,
+                    backgroundColor: alpha(PRIMARY_COLOR, 0.1)
+                  }
+                }}
+              >
+                Add Ingredient
+              </Button>
+            </Box>
+
+            {showIngredientForm && (
+              <Fade in={showIngredientForm}>
+                <Paper 
+                  variant="outlined" 
+                  sx={{ 
+                    p: 3, 
+                    mb: 3, 
+                    borderRadius: 2,
+                    borderColor: alpha(PRIMARY_COLOR, 0.3),
+                    backgroundColor: alpha(PRIMARY_COLOR, 0.05)
+                  }}
+                >
+                  <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: PRIMARY_COLOR }}>
+                    New Ingredient
+                  </Typography>
+                  <Box sx={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, 
+                    gap: 2 
+                  }}>
+                    <TextField
+                      name="RawID"
+                      label="Ingredient ID"
+                      type="number"
+                      value={currentIngredient.RawID}
+                      onChange={handleIngredientChange}
+                      fullWidth
+                      required
+                      size="small"
+                      variant="outlined"
+                      InputProps={{
+                        sx: { borderRadius: 1.5 }
+                      }}
+                      sx={{
+                        '& .MuiInputLabel-root.Mui-focused': {
+                          color: PRIMARY_COLOR
+                        },
+                        '& .MuiOutlinedInput-root': {
+                          '& fieldset': {
+                            borderColor: alpha(PRIMARY_COLOR, 0.3),
+                          },
+                          '&:hover fieldset': {
+                            borderColor: alpha(PRIMARY_COLOR, 0.5),
+                          },
+                          '&.Mui-focused fieldset': {
+                            borderColor: PRIMARY_COLOR,
+                          }
+                        }
+                      }}
+                    />
+                    <TextField
+                      name="Name"
+                      label="Ingredient Name"
+                      value={currentIngredient.Name}
+                      onChange={handleIngredientChange}
+                      fullWidth
+                      required
+                      size="small"
+                      variant="outlined"
+                      InputProps={{
+                        sx: { borderRadius: 1.5 }
+                      }}
+                      sx={{
+                        '& .MuiInputLabel-root.Mui-focused': {
+                          color: PRIMARY_COLOR
+                        },
+                        '& .MuiOutlinedInput-root': {
+                          '& fieldset': {
+                            borderColor: alpha(PRIMARY_COLOR, 0.3),
+                          },
+                          '&:hover fieldset': {
+                            borderColor: alpha(PRIMARY_COLOR, 0.5),
+                          },
+                          '&.Mui-focused fieldset': {
+                            borderColor: PRIMARY_COLOR,
+                          }
+                        }
+                      }}
+                    />
+                    <TextField
+                      name="RawConsume"
+                      label="Quantity"
+                      type="number"
+                      value={currentIngredient.RawConsume}
+                      onChange={handleIngredientChange}
+                      fullWidth
+                      required
+                      size="small"
+                      variant="outlined"
+                      InputProps={{
+                        sx: { borderRadius: 1.5 }
+                      }}
+                      sx={{
+                        '& .MuiInputLabel-root.Mui-focused': {
+                          color: PRIMARY_COLOR
+                        },
+                        '& .MuiOutlinedInput-root': {
+                          '& fieldset': {
+                            borderColor: alpha(PRIMARY_COLOR, 0.3),
+                          },
+                          '&:hover fieldset': {
+                            borderColor: alpha(PRIMARY_COLOR, 0.5),
+                          },
+                          '&.Mui-focused fieldset': {
+                            borderColor: PRIMARY_COLOR,
+                          }
+                        }
+                      }}
+                    />
+                    <FormControl fullWidth size="small" variant="outlined" sx={{
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: PRIMARY_COLOR
+                      },
+                      '& .MuiOutlinedInput-root': {
+                        '& fieldset': {
+                          borderColor: alpha(PRIMARY_COLOR, 0.3),
+                        },
+                        '&:hover fieldset': {
+                          borderColor: alpha(PRIMARY_COLOR, 0.5),
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: PRIMARY_COLOR,
+                        }
+                      }
+                    }}>
+                      <InputLabel id="unit-label">Unit</InputLabel>
+                      <Select
+                        labelId="unit-label"
+                        name="UnitMeasure"
+                        value={currentIngredient.UnitMeasure}
+                        onChange={handleIngredientChange}
+                        label="Unit"
+                        sx={{ borderRadius: 1.5 }}
+                      >
+                        <MenuItem value="g">Grams (g)</MenuItem>
+                        <MenuItem value="kg">Kilograms (kg)</MenuItem>
+                        <MenuItem value="ml">Milliliters (ml)</MenuItem>
+                        <MenuItem value="l">Liters (l)</MenuItem>
+                        <MenuItem value="pcs">Pieces (pcs)</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+                    <Button 
+                      onClick={() => setShowIngredientForm(false)} 
+                      sx={{ mr: 1 }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      variant="contained" 
+                      onClick={addIngredient}
+                      sx={{ 
+                        px: 3,
+                        borderRadius: 1.5,
+                        backgroundColor: PRIMARY_COLOR,
+                        '&:hover': {
+                          backgroundColor: alpha(PRIMARY_COLOR, 0.9),
+                        }
+                      }}
+                    >
+                      Add
+                    </Button>
+                  </Box>
+                </Paper>
+              </Fade>
+            )}
+
+            {currentProduct.rawIngredients.length > 0 ? (
+              <TableContainer 
+                component={Paper} 
+                variant="outlined"
+                sx={{ 
+                  borderRadius: 2,
+                  maxHeight: 300,
+                  overflow: 'auto',
+                  borderColor: alpha(PRIMARY_COLOR, 0.3)
+                }}
+              >
+                <Table size="small" stickyHeader>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 600, color: PRIMARY_COLOR }}>ID</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: PRIMARY_COLOR }}>Name</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: PRIMARY_COLOR }}>Quantity</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: PRIMARY_COLOR }}>Unit</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 600, color: PRIMARY_COLOR }}>Action</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {currentProduct.rawIngredients.map((ingredient, index) => (
+                      <TableRow 
+                        key={index}
+                        hover
+                        sx={{ 
+                          '&:hover': { 
+                            backgroundColor: alpha(PRIMARY_COLOR, 0.05) 
+                          }
+                        }}
+                      >
+                        <TableCell>{ingredient.RawID}</TableCell>
+                        <TableCell>{ingredient.Name}</TableCell>
+                        <TableCell>{ingredient.RawConsume}</TableCell>
+                        <TableCell>{ingredient.UnitMeasure}</TableCell>
+                        <TableCell align="right">
+                          <IconButton 
+                            size="small" 
+                            color="error" 
+                            onClick={() => removeIngredient(index)}
+                            sx={{ 
+                              backgroundColor: alpha('#f44336', 0.1),
+                              '&:hover': {
+                                backgroundColor: alpha('#f44336', 0.2),
+                              }
+                            }}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            ) : (
+              <Paper 
+                variant="outlined" 
+                sx={{ 
+                  p: 3, 
+                  borderRadius: 2,
+                  borderStyle: 'dashed',
+                  borderColor: alpha(PRIMARY_COLOR, 0.3),
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <RestaurantIcon sx={{ fontSize: 40, color: alpha(PRIMARY_COLOR, 0.6), mb: 1 }} />
+                <Typography variant="body2" color="text.secondary" align="center">
+                  No ingredients added yet. Add ingredients to specify what raw materials are needed for this product.
+                </Typography>
+              </Paper>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2, borderTop: `1px solid ${alpha(PRIMARY_COLOR, 0.2)}` }}>
+          <Button 
+            onClick={handleClose}
+            variant="outlined"
+            sx={{ 
+              borderRadius: 1.5,
+              px: 3,
+              color: theme.palette.text.secondary,
+              borderColor: theme.palette.divider
+            }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSubmit} 
+            variant="contained" 
+            color="primary"
+            sx={{ 
+              borderRadius: 1.5,
+              px: 3,
+              fontWeight: 600,
+              backgroundColor: PRIMARY_COLOR,
+              '&:hover': {
+                backgroundColor: alpha(PRIMARY_COLOR, 0.9),
+              }
+            }}
+          >
+            {editMode ? 'Update' : 'Add'} Product
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Stock Adjustment Dialog */}
+      <Dialog 
+        open={stockDialog.open} 
+        onClose={() => setStockDialog({...stockDialog, open: false})}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          elevation: 24,
+          sx: {
+            borderRadius: 2,
+            overflow: 'hidden'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          px: 3, 
+          py: 2,
+          backgroundColor: alpha(PRIMARY_COLOR, 0.1),
+          borderBottom: `1px solid ${alpha(PRIMARY_COLOR, 0.2)}`
+        }}>
+          <Typography variant="h6" component="div" sx={{ fontWeight: 600, color: PRIMARY_COLOR }}>
+            Adjust Stock
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ px: 3, py: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField
+              label="Current Stock"
+              value={stockDialog.currentStock}
+              disabled
+              fullWidth
+              variant="outlined"
+              InputProps={{
+                sx: { borderRadius: 1.5 }
+              }}
+            />
+            <TextField
+              label="New Stock"
+              type="number"
+              value={stockDialog.newStock}
+              onChange={handleStockChange}
+              fullWidth
+              variant="outlined"
+              autoFocus
+              InputProps={{
+                sx: { borderRadius: 1.5 }
+              }}
+              sx={{
+                '& .MuiInputLabel-root.Mui-focused': {
+                  color: PRIMARY_COLOR
+                },
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': {
+                    borderColor: alpha(PRIMARY_COLOR, 0.3),
+                  },
+                  '&:hover fieldset': {
+                    borderColor: alpha(PRIMARY_COLOR, 0.5),
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: PRIMARY_COLOR,
+                  }
+                }
+              }}
+            />
+            <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+              <Button 
+                variant="outlined"
+                fullWidth
+                startIcon={<RemoveShoppingCartIcon />}
+                onClick={() => setStockDialog({...stockDialog, newStock: Math.max(0, stockDialog.newStock - 1)})}
+                sx={{ 
+                  borderRadius: 1.5,
+                  color: PRIMARY_COLOR,
+                  borderColor: alpha(PRIMARY_COLOR, 0.5),
+                  '&:hover': {
+                    borderColor: PRIMARY_COLOR,
+                    backgroundColor: alpha(PRIMARY_COLOR, 0.1)
+                  }
+                }}
+              >
+                Decrease
+              </Button>
+              <Button 
+                variant="outlined"
+                fullWidth
+                startIcon={<AddShoppingCartIcon />}
+                onClick={() => setStockDialog({...stockDialog, newStock: stockDialog.newStock + 1})}
+                sx={{ 
+                  borderRadius: 1.5,
+                  color: PRIMARY_COLOR,
+                  borderColor: alpha(PRIMARY_COLOR, 0.5),
+                  '&:hover': {
+                    borderColor: PRIMARY_COLOR,
+                    backgroundColor: alpha(PRIMARY_COLOR, 0.1)
+                  }
+                }}
+              >
+                Increase
+              </Button>
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2, borderTop: `1px solid ${alpha(PRIMARY_COLOR, 0.2)}` }}>
+          <Button 
+            onClick={() => setStockDialog({...stockDialog, open: false})}
+            sx={{ 
+              borderRadius: 1.5,
+              color: theme.palette.text.secondary
+            }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={submitStockChange} 
+            variant="contained"
+            sx={{ 
+              borderRadius: 1.5,
+              px: 3,
+              backgroundColor: PRIMARY_COLOR,
+              '&:hover': {
+                backgroundColor: alpha(PRIMARY_COLOR, 0.9),
+              }
+            }}
+          >
+            Update Stock
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirmation Dialog */}
+      <Dialog
+        open={confirmDialog.open}
+        onClose={() => setConfirmDialog({...confirmDialog, open: false})}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          elevation: 24,
+          sx: {
+            borderRadius: 2,
+            overflow: 'hidden'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          px: 3, 
+          py: 2,
+          backgroundColor: alpha('#f44336', 0.1),
+          borderBottom: `1px solid ${alpha('#f44336', 0.2)}`
+        }}>
+          <Typography variant="h6" component="div" sx={{ fontWeight: 600, color: '#f44336' }}>
+            {confirmDialog.title}
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ px: 3, py: 3 }}>
+          <Typography variant="body1">
+            {confirmDialog.message}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button 
+            onClick={() => setConfirmDialog({...confirmDialog, open: false})}
+            sx={{ 
+              borderRadius: 1.5,
+              color: theme.palette.text.secondary
+            }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={confirmDialog.confirmAction} 
+            variant="contained"
+            color="error"
+            sx={{ 
+              borderRadius: 1.5,
+              px: 3
+            }}
+          >
+            Confirm
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Advanced Filters Drawer */}
+      <Drawer
+        anchor="right"
+        open={filterDrawer}
+        onClose={() => setFilterDrawer(false)}
+        PaperProps={{
+          sx: {
+            width: 320,
+            p: 2,
+            borderTopLeftRadius: 8,
+            borderBottomLeftRadius: 8
+          }
+        }}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, color: PRIMARY_COLOR }}>
+            Advanced Filters
+          </Typography>
+          <IconButton onClick={() => setFilterDrawer(false)}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
+        
+        <Tabs 
+          value={filterTab} 
+          onChange={(e, newValue) => setFilterTab(newValue)}
+          sx={{
+            mb: 3,
+            '& .MuiTab-root': {
+              color: theme.palette.text.secondary,
+              '&.Mui-selected': {
+                color: PRIMARY_COLOR,
+              }
+            },
+            '& .MuiTabs-indicator': {
+              backgroundColor: PRIMARY_COLOR,
+            }
+          }}
+        >
+          <Tab label="Filters" />
+          <Tab label="View Options" />
+        </Tabs>
+        
+        {filterTab === 0 && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <Box>
+              <Typography variant="subtitle2" gutterBottom sx={{ color: PRIMARY_COLOR }}>
+                Price Range
+              </Typography>
+              <Box sx={{ px: 1 }}>
+                <Slider
+                  value={filters.priceRange}
+                  onChange={(e, newValue) => handleFilterChange('priceRange', newValue)}
+                  valueLabelDisplay="auto"
+                  min={0}
+                  max={Math.max(1000, ...products.map(p => p.price * 1.5))}
+                  sx={{
+                    color: PRIMARY_COLOR,
+                    '& .MuiSlider-thumb': {
+                      '&:hover, &.Mui-focusVisible': {
+                        boxShadow: `0px 0px 0px 8px ${alpha(PRIMARY_COLOR, 0.16)}`,
+                      },
+                    },
+                  }}
+                />
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" color="text.secondary">
+                    ${filters.priceRange[0]}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    ${filters.priceRange[1]}
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+            
+            <FormControl fullWidth>
+              <Typography variant="subtitle2" gutterBottom sx={{ color: PRIMARY_COLOR }}>
+                Category
+              </Typography>
+              <Select
+                value={filters.category}
+                onChange={(e) => handleFilterChange('category', e.target.value)}
+                displayEmpty
+                size="small"
+                sx={{ 
+                  borderRadius: 1.5,
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: alpha(PRIMARY_COLOR, 0.3),
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: alpha(PRIMARY_COLOR, 0.5),
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: PRIMARY_COLOR,
+                  }
+                }}
+              >
+                <MenuItem value="all">All Categories</MenuItem>
+                {categories.map((category) => (
+                  <MenuItem key={category._id} value={category._id}>
+                    {category.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            
+            <FormControl fullWidth>
+              <Typography variant="subtitle2" gutterBottom sx={{ color: PRIMARY_COLOR }}>
+                Stock Status
+              </Typography>
+              <Select
+                value={filters.stockStatus}
+                onChange={(e) => handleFilterChange('stockStatus', e.target.value)}
+                displayEmpty
+                size="small"
+                sx={{ 
+                  borderRadius: 1.5,
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: alpha(PRIMARY_COLOR, 0.3),
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: alpha(PRIMARY_COLOR, 0.5),
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: PRIMARY_COLOR,
+                  }
+                }}
+              >
+                <MenuItem value="all">All Stock Status</MenuItem>
+                <MenuItem value="inStock">In Stock</MenuItem>
+                <MenuItem value="lowStock">Low Stock</MenuItem>
+                <MenuItem value="outOfStock">Out of Stock</MenuItem>
+              </Select>
+            </FormControl>
+            
+            <Box sx={{ mt: 2 }}>
+              <Button 
+                variant="contained" 
+                fullWidth
+                onClick={() => {
+                  setFilters({
+                    search: '',
+                    category: 'all',
+                    stockStatus: 'all',
+                    priceRange: [0, Math.max(1000, ...products.map(p => p.price * 1.5))],
+                    showFilters: false
+                  });
+                  setPage(0);
+                }}
+                sx={{ 
+                  borderRadius: 1.5,
+                  backgroundColor: PRIMARY_COLOR,
+                  '&:hover': {
+                    backgroundColor: alpha(PRIMARY_COLOR, 0.9),
+                  }
+                }}
+              >
+                Reset Filters
+              </Button>
+            </Box>
+          </Box>
+        )}
+        
+        {filterTab === 1 && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={viewOptions.compactView}
+                  onChange={() => handleViewOptionChange('compactView')}
+                  sx={{
+                    '& .MuiSwitch-switchBase.Mui-checked': {
+                      color: PRIMARY_COLOR,
+                      '&:hover': {
+                        backgroundColor: alpha(PRIMARY_COLOR, 0.1),
+                      },
+                    },
+                    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                      backgroundColor: PRIMARY_COLOR,
+                    },
+                  }}
+                />
+              }
+              label="Compact View"
+            />
+            
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={viewOptions.showIngredients}
+                  onChange={() => handleViewOptionChange('showIngredients')}
+                  sx={{
+                    '& .MuiSwitch-switchBase.Mui-checked': {
+                      color: PRIMARY_COLOR,
+                      '&:hover': {
+                        backgroundColor: alpha(PRIMARY_COLOR, 0.1),
+                      },
+                    },
+                    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                      backgroundColor: PRIMARY_COLOR,
+                    },
+                  }}
+                />
+              }
+              label="Show Ingredients"
+            />
+            
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={viewOptions.highlightLowStock}
+                  onChange={() => handleViewOptionChange('highlightLowStock')}
+                  sx={{
+                    '& .MuiSwitch-switchBase.Mui-checked': {
+                      color: PRIMARY_COLOR,
+                      '&:hover': {
+                        backgroundColor: alpha(PRIMARY_COLOR, 0.1),
+                      },
+                    },
+                    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                      backgroundColor: PRIMARY_COLOR,
+                    },
+                  }}
+                />
+              }
+              label="Highlight Low Stock Items"
+            />
+          </Box>
+        )}
+      </Drawer>
+
+      {/* Action Menu */}
+      <Menu
+        anchorEl={actionMenuAnchor}
+        open={Boolean(actionMenuAnchor)}
+        onClose={handleActionMenuClose}
+        PaperProps={{
+          elevation: 3,
+          sx: {
+            borderRadius: 2,
+            minWidth: 180
+          }
+        }}
+      >
+        <MenuItem onClick={() => {
+          const product = products.find(p => p._id === selected[0]);
+          if (product) {
+            handleEdit(product);
+          }
+          handleActionMenuClose();
+        }}>
+          <ListItemIcon>
+            <EditIcon fontSize="small" sx={{ color: PRIMARY_COLOR }} />
+          </ListItemIcon>
+          <ListItemText>Edit</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => {
+          const product = products.find(p => p._id === selected[0]);
+          if (product) {
+            openStockDialog(product);
+          }
+          handleActionMenuClose();
+        }}>
+          <ListItemIcon>
+            <InventoryIcon fontSize="small" sx={{ color: PRIMARY_COLOR }} />
+          </ListItemIcon>
+          <ListItemText>Adjust Stock</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => {
+          const product = products.find(p => p._id === selected[0]);
+          if (product) {
+            handleDuplicate(product);
+          }
+          handleActionMenuClose();
+        }}>
+          <ListItemIcon>
+            <ContentCopyIcon fontSize="small" sx={{ color: PRIMARY_COLOR }} />
+          </ListItemIcon>
+          <ListItemText>Duplicate</ListItemText>
+        </MenuItem>
+        <Divider />
+        <MenuItem onClick={() => {
+          handleBulkDelete();
+          handleActionMenuClose();
+        }}>
+          <ListItemIcon>
+            <DeleteIcon fontSize="small" color="error" />
+          </ListItemIcon>
+          <ListItemText sx={{ color: 'error.main' }}>Delete</ListItemText>
+        </MenuItem>
+      </Menu>
+
+      {/* Snackbar for notifications */}
+      <Snackbar 
+        open={snackbar.open} 
+        autoHideDuration={6000} 
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        TransitionComponent={Fade}
+      >
+        <Alert 
+          onClose={handleSnackbarClose} 
+          severity={snackbar.severity} 
+          variant="filled"
+          sx={{ 
+            width: '100%',
+            boxShadow: theme.shadows[6],
+            ...(snackbar.severity === 'success' && {
+              backgroundColor: PRIMARY_COLOR
+            })
+          }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </MainContentWrapper>
+  );
+};
+
+export default ProductAddition;

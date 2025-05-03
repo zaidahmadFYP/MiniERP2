@@ -17,7 +17,7 @@ const MainContent = styled(Box)(({ theme }) => ({
   overflowY: 'auto',   // Allow vertical scrolling
 }));
 
-const FinanceAndSales = () => {
+const ProductInformationConfiguration = () => {
   const theme = useTheme(); 
   const isMobile = window.innerWidth < 600; // Simple mobile check for ml prop
 
@@ -72,7 +72,7 @@ const FinanceAndSales = () => {
             marginRight: '4px',
           }}
         />
-        Finance and Sales
+        Product Information and Configuration
       </Typography>
 
       {/* Modules Section */}
@@ -92,4 +92,4 @@ const FinanceAndSales = () => {
   );
 };
 
-export default FinanceAndSales;
+export default ProductInformationConfiguration;

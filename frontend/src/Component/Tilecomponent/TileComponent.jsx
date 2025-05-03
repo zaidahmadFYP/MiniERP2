@@ -19,6 +19,9 @@ const Tile = ({ name, image }) => {
       case 'Finance and Sales':
         navigate('/FinanceandSales');
         break;
+      case 'Product Information and Configuration':
+        navigate('/ProductInformationConfiguration');
+        break;
       case 'User Management':
         navigate('/UserManagement');
         break;

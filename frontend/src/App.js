@@ -34,6 +34,8 @@ import AccountsPayable from "./pages/Finance and Sales/AccountsPayable/AccountsP
 import AccountsReceivable from "./pages/Finance and Sales/Accounts Recievable/AccountsRecievable";
 import BankManagement from "./pages/Finance and Sales/Bank Management/BankManagement";
 import FinanceReport from "./pages/Finance and Sales/FinanceReport/FinanceReport";
+import ProductInformationConfiguration from "./pages/Product Information and Configuration/ProductInformationConfiguration";
+import ProductAddition from "./pages/Product Information and Configuration/Product Addition/ProductAddition";
 
 function App() {
   // ------------ Authentication ------------
@@ -402,6 +404,30 @@ function App() {
             element={
               isAuthenticated ? (
                 <FinanceReport user={user} />
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+
+          {/* ------------ Product Information and Configuration ------------ */}
+
+          <Route
+            path="/ProductInformationConfiguration"
+            element={
+              isAuthenticated ? (
+                <ProductInformationConfiguration user={user} />
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+
+          <Route
+            path="/ProductInformationConfiguration/ProductAddition"
+            element={
+              isAuthenticated ? (
+                <ProductAddition  user={user} />
               ) : (
                 <Navigate to="/login" />
               )
