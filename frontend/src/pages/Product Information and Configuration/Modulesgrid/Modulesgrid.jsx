@@ -16,12 +16,12 @@ const modules = [
   {
     name: 'Product Categories',
     image: '/images/Product_Category.png',
-    path: '/ProductInformationConfiguration/',
+    path: '/ProductInformationConfiguration/ProductCategory',
   },
   {
     name: 'Product Pricing',
     image: '/images/Product_Pricing.png',
-    path: '/ProductInformationConfiguration/',
+    path: '/ProductInformationConfiguration/ProductPricing',
   },
 ];
 

@@ -36,6 +36,8 @@ import BankManagement from "./pages/Finance and Sales/Bank Management/BankManage
 import FinanceReport from "./pages/Finance and Sales/FinanceReport/FinanceReport";
 import ProductInformationConfiguration from "./pages/Product Information and Configuration/ProductInformationConfiguration";
 import ProductAddition from "./pages/Product Information and Configuration/Product Addition/ProductAddition";
+import ProductCategory from "./pages/Product Information and Configuration/Product Categories/ProductCategory";
+import ProductPricing from "./pages/Product Information and Configuration/Product Pricing/ProductPricing";
 
 function App() {
   // ------------ Authentication ------------
@@ -434,7 +436,27 @@ function App() {
             }
           />
 
+          <Route
+            path="/ProductInformationConfiguration/ProductCategory"
+            element={
+              isAuthenticated ? (
+                <ProductCategory  user={user} />
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
 
+          <Route
+            path="/ProductInformationConfiguration/ProductPricing"
+            element={
+              isAuthenticated ? (
+                <ProductPricing  user={user} />
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
 
           {/* ------------ User Management ------------ */}
           <Route

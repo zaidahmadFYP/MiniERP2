@@ -6,8 +6,213 @@ const FinishedGoods = require("../models/finishedGoods")
 const BOM = require("../models/bom")
 const mongoose = require("mongoose")
 
-// Get all menu categories with their items
+// ===== CATEGORY ROUTES - Enhanced for ProductCategory component =====
+
+// Get all menu categories with pagination, sorting, and filtering
 router.get("/categories", async (req, res) => {
+  try {
+    // Extract query parameters
+    const page = parseInt(req.query.page) || 1
+    const limit = parseInt(req.query.limit) || 10
+    const sortBy = req.query.sortBy || "order"
+    const sortOrder = req.query.sortOrder || "asc"
+    const search = req.query.search || ""
+
+    // Build filter object
+    const filter = {}
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { id: { $regex: search, $options: "i" } }
+      ]
+    }
+
+    // Calculate skip value for pagination
+    const skip = (page - 1) * limit
+
+    // Build sort object
+    const sort = {}
+    sort[sortBy] = sortOrder === "asc" ? 1 : -1
+
+    // Count total documents for pagination
+    const totalCategories = await MenuCategory.countDocuments(filter)
+    const totalPages = Math.ceil(totalCategories / limit)
+
+    // Fetch categories with pagination and sorting
+    const categories = await MenuCategory.find(filter)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+
+    // If client is requesting the full menu data with items
+    if (req.query.includeItems === "true") {
+      const items = await MenuItem.find({ isAvailable: true }).populate("category")
+
+      const menuData = categories.map((category) => ({
+        _id: category._id,
+        id: category.id,
+        name: category.name,
+        columns: category.columns,
+        smallText: category.smallText,
+        order: category.order,
+        items: items
+          .filter((item) => item.category && item.category._id.toString() === category._id.toString())
+          .map((item) => ({
+            id: item.id,
+            name: item.name,
+            price: item.price,
+            isPizza: item.isPizza,
+          })),
+      }))
+
+      res.json({
+        categories: menuData,
+        page,
+        limit,
+        totalCategories,
+        totalPages
+      })
+    } else {
+      // Return just the categories for the ProductCategory component
+      res.json({
+        categories,
+        page,
+        limit,
+        totalCategories,
+        totalPages
+      })
+    }
+  } catch (error) {
+    console.error("Error fetching categories:", error)
+    res.status(500).json({ message: error.message })
+  }
+})
+
+// Get a single category by ID
+router.get("/categories/:id", async (req, res) => {
+  try {
+    const category = await MenuCategory.findById(req.params.id)
+    
+    if (!category) {
+      return res.status(404).json({ message: "Category not found" })
+    }
+    
+    res.json(category)
+  } catch (error) {
+    console.error("Error fetching category:", error)
+    res.status(500).json({ message: error.message })
+  }
+})
+
+// Create a new category
+router.post("/categories", async (req, res) => {
+  try {
+    // Validate required fields
+    if (!req.body.name) {
+      return res.status(400).json({ message: "Category name is required" })
+    }
+
+    // Create new category
+    const newCategory = new MenuCategory({
+      id: req.body.id || `CAT${Math.floor(Math.random() * 10000).toString().padStart(4, "0")}`,
+      name: req.body.name,
+      columns: req.body.columns || 2,
+      smallText: req.body.smallText || false,
+      order: req.body.order || 0
+    })
+
+    // Save to database
+    const savedCategory = await newCategory.save()
+    res.status(201).json(savedCategory)
+  } catch (error) {
+    console.error("Error creating category:", error)
+    res.status(500).json({ message: error.message })
+  }
+})
+
+// Update a category
+router.put("/categories/:id", async (req, res) => {
+  try {
+    // Validate required fields
+    if (!req.body.name) {
+      return res.status(400).json({ message: "Category name is required" })
+    }
+
+    // Find and update the category
+    const updatedCategory = await MenuCategory.findByIdAndUpdate(
+      req.params.id,
+      {
+        name: req.body.name,
+        columns: req.body.columns,
+        smallText: req.body.smallText,
+        order: req.body.order
+      },
+      { new: true, runValidators: true }
+    )
+
+    if (!updatedCategory) {
+      return res.status(404).json({ message: "Category not found" })
+    }
+
+    res.json(updatedCategory)
+  } catch (error) {
+    console.error("Error updating category:", error)
+    res.status(500).json({ message: error.message })
+  }
+})
+
+// Delete a category
+router.delete("/categories/:id", async (req, res) => {
+  try {
+    // Check if category has menu items
+    const itemsWithCategory = await MenuItem.countDocuments({ category: req.params.id })
+    
+    if (itemsWithCategory > 0) {
+      return res.status(400).json({ 
+        message: "Cannot delete category with associated menu items. Please reassign or delete the items first." 
+      })
+    }
+
+    // Delete the category
+    const deletedCategory = await MenuCategory.findByIdAndDelete(req.params.id)
+    
+    if (!deletedCategory) {
+      return res.status(404).json({ message: "Category not found" })
+    }
+    
+    res.json({ message: "Category deleted successfully" })
+  } catch (error) {
+    console.error("Error deleting category:", error)
+    res.status(500).json({ message: error.message })
+  }
+})
+
+// Get category statistics
+router.get("/categories/stats/summary", async (req, res) => {
+  try {
+    const totalCategories = await MenuCategory.countDocuments()
+    const categoriesWithSmallText = await MenuCategory.countDocuments({ smallText: true })
+    
+    // Calculate average columns
+    const categories = await MenuCategory.find()
+    const totalColumns = categories.reduce((sum, category) => sum + category.columns, 0)
+    const averageColumns = categories.length > 0 ? (totalColumns / categories.length).toFixed(1) : 0
+    
+    res.json({
+      total: totalCategories,
+      withSmallText: categoriesWithSmallText,
+      averageColumns
+    })
+  } catch (error) {
+    console.error("Error fetching category stats:", error)
+    res.status(500).json({ message: error.message })
+  }
+})
+
+// ===== EXISTING ROUTES =====
+
+// Get all menu categories with their items (original route kept for backward compatibility)
+router.get("/menu", async (req, res) => {
   try {
     const categories = await MenuCategory.find().sort("order")
     const items = await MenuItem.find({ isAvailable: true }).populate("category")

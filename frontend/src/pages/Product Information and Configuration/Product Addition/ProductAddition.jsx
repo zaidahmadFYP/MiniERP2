@@ -69,15 +69,15 @@ const ProductAddition = () => {
 
   // Theme-aware colors
   const THEME_COLOR = BRAND_COLOR
-  const THEME_COLOR_LIGHT = alpha(BRAND_COLOR, 0.1)
-  const THEME_COLOR_LIGHTER = alpha(BRAND_COLOR, 0.05)
-  const THEME_COLOR_DARK = "#d94a1a"
-  const BG_COLOR = theme.palette.mode === "dark" ? theme.palette.background.default : "#f9f9f9"
+  const THEME_COLOR_LIGHT = alpha(BRAND_COLOR, theme.palette.mode === "dark" ? 0.15 : 0.1)
+  const THEME_COLOR_LIGHTER = alpha(BRAND_COLOR, theme.palette.mode === "dark" ? 0.08 : 0.05)
+  const THEME_COLOR_DARK = theme.palette.mode === "dark" ? "#ff6b33" : "#d94a1a"
+  const BG_COLOR = theme.palette.mode === "dark" ? alpha(theme.palette.background.default, 0.7) : "#f9f9f9"
   const CARD_BG = theme.palette.background.paper
   const TEXT_PRIMARY = theme.palette.text.primary
   const TEXT_SECONDARY = theme.palette.text.secondary
   const BORDER_COLOR = theme.palette.mode === "dark" ? alpha(theme.palette.divider, 0.3) : "#eee"
-  const TABLE_HOVER_COLOR = theme.palette.mode === "dark" ? alpha(BRAND_COLOR, 0.1) : "#fff8f5"
+  const TABLE_HOVER_COLOR = theme.palette.mode === "dark" ? alpha(BRAND_COLOR, 0.15) : "#fff8f5"
   const TABLE_ODD_ROW = theme.palette.mode === "dark" ? alpha(theme.palette.background.paper, 0.6) : "#fafafa"
 
   // State for products and categories
@@ -184,7 +184,8 @@ const ProductAddition = () => {
           axios.get(`${API_BASE_URL}/bom`),
         ])
 
-        const fetchedCategories = categoriesResponse.data
+        // Handle the new categories response format which now includes pagination
+        const fetchedCategories = categoriesResponse.data.categories || categoriesResponse.data
         setCategories(fetchedCategories)
 
         // Create category options for Autocomplete - include both objects and strings
@@ -724,7 +725,7 @@ const ProductAddition = () => {
                       },
                     }}
                   >
-                    Product Addition
+                    Product Management
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                     Manage your menu items, prices, ingredients, and inventory
@@ -770,6 +771,8 @@ const ProductAddition = () => {
                 minWidth: { xs: "100%", sm: "200px" },
                 overflow: "hidden",
                 transition: "transform 0.2s, box-shadow 0.2s",
+                bgcolor: CARD_BG,
+                border: theme.palette.mode === "dark" ? `1px solid ${alpha(theme.palette.divider, 0.1)}` : "none",
                 "&:hover": {
                   transform: "translateY(-4px)",
                   boxShadow: theme.shadows[4],
@@ -823,6 +826,8 @@ const ProductAddition = () => {
                 minWidth: { xs: "100%", sm: "200px" },
                 overflow: "hidden",
                 transition: "transform 0.2s, box-shadow 0.2s",
+                bgcolor: CARD_BG,
+                border: theme.palette.mode === "dark" ? `1px solid ${alpha(theme.palette.divider, 0.1)}` : "none",
                 "&:hover": {
                   transform: "translateY(-4px)",
                   boxShadow: theme.shadows[4],
@@ -876,6 +881,8 @@ const ProductAddition = () => {
                 minWidth: { xs: "100%", sm: "200px" },
                 overflow: "hidden",
                 transition: "transform 0.2s, box-shadow 0.2s",
+                bgcolor: CARD_BG,
+                border: theme.palette.mode === "dark" ? `1px solid ${alpha(theme.palette.divider, 0.1)}` : "none",
                 "&:hover": {
                   transform: "translateY(-4px)",
                   boxShadow: theme.shadows[4],
@@ -929,6 +936,8 @@ const ProductAddition = () => {
                 minWidth: { xs: "100%", sm: "200px" },
                 overflow: "hidden",
                 transition: "transform 0.2s, box-shadow 0.2s",
+                bgcolor: CARD_BG,
+                border: theme.palette.mode === "dark" ? `1px solid ${alpha(theme.palette.divider, 0.1)}` : "none",
                 "&:hover": {
                   transform: "translateY(-4px)",
                   boxShadow: theme.shadows[4],
@@ -1027,17 +1036,17 @@ const ProductAddition = () => {
                     color: THEME_COLOR,
                     width: 40,
                     height: 40,
-                    mr: 0,
+                    mr: 1.5,
                   }}
                 >
                   <ShoppingBasketIcon fontSize="small" />
                 </Avatar>
               </Badge>
               <Box>
-                <Typography variant="h6" sx={{ fontWeight: "bold", ml: 2 }}>
+                <Typography variant="h6" sx={{ fontWeight: "bold" }}>
                   Product Inventory
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
+                <Typography variant="body2" color="text.secondary">
                   {filteredProducts.length} of {stats.totalProducts} products
                 </Typography>
               </Box>
@@ -1071,7 +1080,7 @@ const ProductAddition = () => {
                   maxWidth: { xs: "100%", md: "300px" },
                 }}
               />
-              {/* <Button
+              <Button
                 variant="outlined"
                 startIcon={<AddIcon />}
                 onClick={handleClickOpen}
@@ -1091,11 +1100,19 @@ const ProductAddition = () => {
                 }}
               >
                 ADD PRODUCT
-              </Button> */}
+              </Button>
             </Box>
           </Box>
 
-          <TableContainer sx={{ maxHeight: "calc(100vh - 400px)", minHeight: "200px" }}>
+          <TableContainer
+            sx={{
+              maxHeight: "calc(100vh - 400px)",
+              minHeight: "200px",
+              bgcolor: CARD_BG,
+              borderRadius: 2,
+              border: theme.palette.mode === "dark" ? `1px solid ${alpha(theme.palette.divider, 0.1)}` : "none",
+            }}
+          >
             <Table stickyHeader aria-label="product table">
               <TableHead>
                 <TableRow
@@ -1332,6 +1349,8 @@ const ProductAddition = () => {
             borderRadius: 2,
             overflow: "hidden",
             boxShadow: theme.shadows[10],
+            bgcolor: CARD_BG,
+            border: theme.palette.mode === "dark" ? `1px solid ${alpha(theme.palette.divider, 0.1)}` : "none",
           },
         }}
         TransitionComponent={Fade}
@@ -1609,12 +1628,13 @@ const ProductAddition = () => {
                     <Box
                       sx={{
                         p: 3,
-                        border: `1px solid ${alpha(THEME_COLOR, 0.2)}`,
+                        border: `1px solid ${alpha(THEME_COLOR, theme.palette.mode === "dark" ? 0.3 : 0.2)}`,
                         borderRadius: 2,
                         mb: 3,
                         bgcolor:
-                          theme.palette.mode === "dark" ? alpha(theme.palette.background.default, 0.2) : "#fafafa",
-                        boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+                          theme.palette.mode === "dark" ? alpha(theme.palette.background.default, 0.4) : "#fafafa",
+                        boxShadow:
+                          theme.palette.mode === "dark" ? "0 2px 8px rgba(0,0,0,0.2)" : "0 2px 8px rgba(0,0,0,0.05)",
                         position: "relative",
                         "&::before": {
                           content: '""',
@@ -1778,8 +1798,10 @@ const ProductAddition = () => {
                     sx={{
                       borderRadius: 2,
                       overflow: "hidden",
-                      border: `1px solid ${BORDER_COLOR}`,
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+                      border: `1px solid ${theme.palette.mode === "dark" ? alpha(theme.palette.divider, 0.2) : BORDER_COLOR}`,
+                      boxShadow:
+                        theme.palette.mode === "dark" ? "0 2px 8px rgba(0,0,0,0.2)" : "0 2px 8px rgba(0,0,0,0.05)",
+                      bgcolor: CARD_BG,
                     }}
                   >
                     <Table size="small">
@@ -1846,9 +1868,9 @@ const ProductAddition = () => {
                     sx={{
                       p: 3,
                       borderRadius: 2,
-                      bgcolor: theme.palette.mode === "dark" ? alpha(theme.palette.background.default, 0.2) : "#f5f5f5",
+                      bgcolor: theme.palette.mode === "dark" ? alpha(theme.palette.background.default, 0.4) : "#f5f5f5",
                       textAlign: "center",
-                      border: `1px dashed ${BORDER_COLOR}`,
+                      border: `1px dashed ${theme.palette.mode === "dark" ? alpha(theme.palette.divider, 0.5) : BORDER_COLOR}`,
                       display: "flex",
                       flexDirection: "column",
                       alignItems: "center",
@@ -1954,7 +1976,7 @@ const ProductAddition = () => {
             boxShadow: theme.shadows[6],
             ...(snackbar.severity === "success" && {
               bgcolor:
-                theme.palette.mode === "dark" ? alpha(theme.palette.success.main, 0.8) : theme.palette.success.main,
+                theme.palette.mode === "dark" ? alpha(theme.palette.success.main, 0.9) : theme.palette.success.main,
             }),
           }}
         >
