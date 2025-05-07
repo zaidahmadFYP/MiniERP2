@@ -1,4 +1,4 @@
-"use client"
+
 import { Box, Typography, Divider, useTheme } from "@mui/material"
 
 const SimplePieChart = ({ data, valueKey, labelKey }) => {

@@ -1,4 +1,4 @@
-"use client"
+
 import { Box, TextField, MenuItem, Button, ButtonGroup, alpha } from "@mui/material"
 import { FilterList, CalendarMonth, CreditCard, Inventory } from "@mui/icons-material"
 import { format } from "date-fns"

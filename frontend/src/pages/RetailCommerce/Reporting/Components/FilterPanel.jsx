@@ -39,7 +39,7 @@ const FilterPanel = ({
           mb: 2,
         }}
       >
-        <TextField
+        {/* <TextField
           label="Start Date"
           type="date"
           value={format(startDate, "yyyy-MM-dd")}
@@ -76,7 +76,7 @@ const FilterPanel = ({
           InputProps={{
             startAdornment: <CalendarMonth fontSize="small" sx={{ mr: 1, color: alpha("#f15a22", 0.7) }} />,
           }}
-        />
+        /> */}
 
         <TextField
           select

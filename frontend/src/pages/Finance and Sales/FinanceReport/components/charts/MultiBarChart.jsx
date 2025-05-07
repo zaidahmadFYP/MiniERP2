@@ -1,4 +1,3 @@
-// "use client"
 // import {
 //   Box,
 //   Typography,
@@ -423,7 +422,6 @@
 
 // export default MultiBarChart
 
-"use client"
 import {
   Box,
   Typography,

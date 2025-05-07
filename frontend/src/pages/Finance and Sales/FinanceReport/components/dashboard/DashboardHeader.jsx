@@ -1,4 +1,4 @@
-"use client"
+
 import { Box, Typography, IconButton, Tooltip, CircularProgress, alpha } from "@mui/material"
 import { AttachMoney, Refresh, Download } from "@mui/icons-material"
 

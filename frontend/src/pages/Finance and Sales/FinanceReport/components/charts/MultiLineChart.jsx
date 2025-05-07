@@ -1,4 +1,3 @@
-// "use client"
 // import {
 //   Box,
 //   Typography,
@@ -129,7 +128,6 @@
 // export default MultiLineChart
 
 
-"use client"
 import {
   Box,
   Typography,

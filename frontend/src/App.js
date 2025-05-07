@@ -34,10 +34,17 @@ import AccountsPayable from "./pages/Finance and Sales/AccountsPayable/AccountsP
 import AccountsReceivable from "./pages/Finance and Sales/Accounts Recievable/AccountsRecievable";
 import BankManagement from "./pages/Finance and Sales/Bank Management/BankManagement";
 import FinanceReport from "./pages/Finance and Sales/FinanceReport/FinanceReport";
+
+// Product Information and Configuration Imports
 import ProductInformationConfiguration from "./pages/Product Information and Configuration/ProductInformationConfiguration";
 import ProductAddition from "./pages/Product Information and Configuration/Product Addition/ProductAddition";
 import ProductCategory from "./pages/Product Information and Configuration/Product Categories/ProductCategory";
 import ProductPricing from "./pages/Product Information and Configuration/Product Pricing/ProductPricing";
+
+// Inventory Management Imports
+import InventoryManagement from "./pages/Inventory Management/InventoryManagement";
+import StockManagement from "./pages/Inventory Management/Stock Management/StockManagement";
+import WarehouseManagement from "./pages/Inventory Management/Warehouse Management/WarehouseManagement";
 
 function App() {
   // ------------ Authentication ------------
@@ -452,6 +459,41 @@ function App() {
             element={
               isAuthenticated ? (
                 <ProductPricing  user={user} />
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+
+          {/* ------------ Inventory Management ------------ */}
+
+          <Route
+            path="/InventoryManagement"
+            element={
+              isAuthenticated ? (
+                <InventoryManagement user={user} />
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+
+          <Route
+            path="/InventoryManagement/StockManagement"
+            element={
+              isAuthenticated ? (
+                <StockManagement user={user} />
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+
+          <Route
+            path="/InventoryManagement/WarehouseManagement"
+            element={
+              isAuthenticated ? (
+                <WarehouseManagement user={user} />
               ) : (
                 <Navigate to="/login" />
               )

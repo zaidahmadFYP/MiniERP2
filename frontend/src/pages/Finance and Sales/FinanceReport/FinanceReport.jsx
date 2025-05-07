@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import { Box, Container, Alert, useTheme, alpha } from "@mui/material"
 import { format, subDays, isWithinInterval } from "date-fns"

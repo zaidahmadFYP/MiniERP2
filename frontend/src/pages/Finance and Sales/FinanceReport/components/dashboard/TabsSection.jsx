@@ -1,4 +1,3 @@
-"use client"
 import { Paper, Tabs, Tab, alpha } from "@mui/material"
 import { AttachMoney, Business, Inventory } from "@mui/icons-material"
 import SalesAnalysisTab from "../tabs/SalesAnalysisTab"

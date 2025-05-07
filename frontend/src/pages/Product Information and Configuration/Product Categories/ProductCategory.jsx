@@ -53,7 +53,6 @@ import {
   Search as SearchIcon,
   FilterList as FilterListIcon,
   CloudDownload as CloudDownloadIcon,
-  RestaurantMenu as RestaurantMenuIcon,
 } from "@mui/icons-material"
 import MainContentWrapper from "./MainContentWrapper"
 
@@ -180,21 +179,22 @@ const ProductCategory = () => {
       }
       const data = await response.json()
 
-      // Extract categories and pagination info
-      const { categories: categoriesData, totalPages: totalPagesData } = data
+      // Check if the response is an array (direct categories) or an object with pagination
+      const categoriesData = Array.isArray(data) ? data : data.categories || []
+      const totalPagesData = Array.isArray(data) ? Math.ceil(data.length / rowsPerPage) : data.totalPages || 1
 
       // Map the categories to our format
       const categoriesOnly = categoriesData.map((category) => ({
         _id: category._id,
         id: category.id,
         name: category.name,
-        columns: category.columns,
-        smallText: category.smallText,
-        order: category.order,
+        columns: category.columns || 2,
+        smallText: category.smallText || false,
+        order: category.order || 0,
       }))
 
       setCategories(categoriesOnly)
-      setTotalPages(totalPagesData || Math.ceil(categoriesOnly.length / rowsPerPage))
+      setTotalPages(totalPagesData)
       setError(null)
     } catch (err) {
       console.error("Error fetching categories:", err)
@@ -1051,7 +1051,7 @@ const ProductCategory = () => {
               display: "flex",
               alignItems: "center",
               gap: 1,
-              mb:2,
+              mb: 2,
             }}
           >
             {dialogMode === "add" ? <AddIcon /> : <EditIcon />}

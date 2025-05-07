@@ -1,4 +1,4 @@
-"use client"
+
 import { Box, Typography, LinearProgress, useTheme, alpha } from "@mui/material"
 
 const SimpleBarChart = ({ data, valueKey, labelKey, color = "#8884d8" }) => {
