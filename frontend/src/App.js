@@ -28,7 +28,7 @@ import StoreTransaction from "./pages/RetailCommerce/StoreTransaction/StoreTrans
 import PosConfiguration from "./pages/RetailCommerce/PosConfiguration/PosConfiguration";
 import Reporting from "./pages/RetailCommerce/Reporting/Reporting";
 
-// Finance And Sales Imports 
+// Finance And Sales Imports
 import FinanceAndSales from "./pages/Finance and Sales/FinanceAndSales";
 import AccountsPayable from "./pages/Finance and Sales/AccountsPayable/AccountsPayable";
 import AccountsReceivable from "./pages/Finance and Sales/Accounts Recievable/AccountsRecievable";
@@ -45,6 +45,7 @@ import ProductPricing from "./pages/Product Information and Configuration/Produc
 import InventoryManagement from "./pages/Inventory Management/InventoryManagement";
 import StockManagement from "./pages/Inventory Management/Stock Management/StockManagement";
 import WarehouseManagement from "./pages/Inventory Management/Warehouse Management/WarehouseManagement";
+import ReportAnalytics from "./pages/Report and Analytics/ReportAnalytics";
 
 function App() {
   // ------------ Authentication ------------
@@ -66,147 +67,105 @@ function App() {
 
   // This array is for search logic (you can adapt as needed)
   const items = [
+    // ------------ Retail and Commerce ------------
     {
-      name: "Licenses",
-      path: "/Licenses/Licensepage",
-      category: "Modules > Licenses",
+      name: "Retail and Commerce",
+      path: "/RetailCommerce",
+      category: "Modules > Retail and Commerce",
     },
-    // sub-modules
+    // ------------ Retail and Commerce Submodules ------------
     {
-      name: "Trade Licenses",
-      path: "/Licenses/Licensepage",
-      category: "Modules > Licenses > Trade Licenses",
-    },
-    {
-      name: "Staff Medicals",
-      path: "/UserManagement",
-      category: "Modules > Licenses > Staff Medicals",
+      name: "Store Transactions",
+      path: "/RetailCommerce/StoreTransactions",
+      category: "Modules > Retail and Commerce > Store Transactions",
     },
     {
-      name: "Toursim Licenses",
-      path: "/UserManagement",
-      category: "Modules > Licenses > Tourism Licenses",
+      name: "POS Configuration",
+      path: "/RetailCommerce/PosConfiguration",
+      category: "Modules > Retail and Commerce > POS Configuration",
     },
     {
-      name: "Labour Licenses",
-      path: "/UserManagement",
-      category: "Modules > Licenses > Labour Licenses",
+      name: "Retail and Commerce Reports",
+      path: "/RetailCommerce/Reporting",
+      category: "Modules > Retail and Commerce > Reporting",
+    },
+
+    // ------------ Finance and Sales ------------
+    {
+      name: "Finance and Sales",
+      path: "/FinanceandSales",
+      category: "Modules > Finance and Sales",
+    },
+    // ------------ Finance and Sales Submodules ------------
+    {
+      name: "Accounts Payable",
+      path: "/FinanceandSales/AccountsPayable",
+      category: "Modules > Finance and Sales > Accounts Payable",
     },
 
     {
-      name: "Approvals",
-      path: "/Approval/Approvalpage",
-      category: "Modules > Approvals",
-    },
-    // sub-modules
-    {
-      name: "Outer Spaces",
-      path: "/Approval/Approvalpage",
-      category: "Modules > Approvals > Outer Spaces",
+      name: "Accounts Receivable",
+      path: "/FinanceandSales/AccountsRecievable",
+      category: "Modules > Finance and Sales > Accounts Receivable",
     },
 
     {
-      name: "Vehicles",
-      path: "/Vehicles/Vehiclepage",
-      category: "Modules > Vehicles",
-    },
-    // sub-modules
-    {
-      name: "Maintenance",
-      path: "/Vehicles/Vehiclepage",
-      category: "Modules > Vehicles > Maintenance",
-    },
-    {
-      name: "Route Permits",
-      path: "/Vehicles/Vehiclepage",
-      category: "Modules > Vehicles > Route Permits",
-    },
-    {
-      name: "Token Taxes",
-      path: "/Vehicles/Vehiclepage",
-      category: "Modules > Vehicles > Token Taxes",
+      name: "Bank Management",
+      path: "/FinanceandSales/BankManagement",
+      category: "Modules > Finance and Sales > Bank Management",
     },
 
     {
-      name: "User Requests",
-      path: "/UserRequests",
-      category: "Modules > User Requests",
+      name: "Finance and Sales Reports",
+      path: "/FinanceandSales/FinanceReport",
+      category: "Modules > Finance and Sales > Reporting",
+    },
+
+    // ------------ Product Information and Configuration ------------
+
+    {
+      name: "Product Information and Configuration",
+      path: "/ProductInformationConfiguration",
+      category: "Modules > Product Information and Configuration",
+    },
+    // ------------ Product Information and Configuration Submodules ------------
+    {
+      name: "Product Addition",
+      path: "/ProductInformationConfiguration/ProductAddition",
+      category:
+        "Modules > Product Information and Configuration > Product Addition",
+    },
+    {
+      name: "Product Categories",
+      path: "/ProductInformationConfiguration/ProductCategory",
+      category:
+        "Modules > Product Information and Configuration > Product Categories",
+    },
+    {
+      name: "Product Pricing",
+      path: "/ProductInformationConfiguration/ProductPricing",
+      category:
+        "Modules > Product Information and Configuration > Product Pricing",
+    },
+    // ------------ Inventory Management ------------
+    {
+      name: "Inventory Management",
+      path: "/InventoryManagement",
+      category: "Modules > Inventory Management",
+    },
+    // ------------ Inventory Management Submodules ------------
+    {
+      name: "Stock Management",
+      path: "/InventoryManagement/StockManagement",
+      category: "Modules > Inventory Management > Stock Management",
     },
 
     {
-      name: "Health Safety Environment",
-      path: "/Hse/Hse",
-      category: "Modules > Health Safety Environment",
+      name: "Warehouse Management",
+      path: "/InventoryManagement/WarehouseManagement",
+      category: "Modules > Inventory Management > Warehouse Management",
     },
-    // sub-modules
-    {
-      name: "Monthly Inspection",
-      path: "/Hse/Hse",
-      category: "Modules > Health Safety Environment > Monthly Inspection",
-    },
-    {
-      name: "Quarterly Audit",
-      path: "/Hse/Hse",
-      category: "Modules > Health Safety Environment > Quarterly Audit",
-    },
-    {
-      name: "Training Status",
-      path: "/Hse/Hse",
-      category: "Modules > Health Safety Environment > Training Status",
-    },
-    {
-      name: "Incidents",
-      path: "/Hse/Hse",
-      category: "Modules > Health Safety Environment > Incidents",
-    },
-
-    {
-      name: "Taxation",
-      path: "/Taxation/Taxationpage",
-      category: "Modules > Taxation",
-    },
-    // sub-modules
-    {
-      name: "Marketing / BillBoards Taxes",
-      path: "/Taxation/Taxationpage",
-      category: "Modules > Taxation > Marketing / BillBoards Taxes",
-    },
-    {
-      name: "Profession Taxes",
-      path: "/Taxation/Taxationpage",
-      category: "Modules > Taxation > Profession Taxes",
-    },
-
-    {
-      name: "Certificates",
-      path: "/Certificate/Certificatepage",
-      category: "Modules > Certificates",
-    },
-    // sub-modules
-    {
-      name: "Electric Fitness Test",
-      path: "/Certificate/Certificatepage",
-      category: "Modules > Certificates > Electric Fitness Test",
-    },
-
-    {
-      name: "Security",
-      path: "/Security/GuardTraining",
-      category: "Modules > Security",
-    },
-
-    {
-      name: "Admin Policies and SOPs",
-      path: "/AdminPolicies",
-      category: "Modules > Admin Policies",
-    },
-
-    {
-      name: "Rental Agreements",
-      path: "/RentalAgreements",
-      category: "Modules > Rental Agreements",
-    },
-
+    // ------------ User Management ------------
     {
       name: "User Management",
       path: "/UserManagement/",
@@ -408,7 +367,7 @@ function App() {
             }
           />
 
-            <Route
+          <Route
             path="/FinanceandSales/Reporting"
             element={
               isAuthenticated ? (
@@ -436,7 +395,7 @@ function App() {
             path="/ProductInformationConfiguration/ProductAddition"
             element={
               isAuthenticated ? (
-                <ProductAddition  user={user} />
+                <ProductAddition user={user} />
               ) : (
                 <Navigate to="/login" />
               )
@@ -447,7 +406,7 @@ function App() {
             path="/ProductInformationConfiguration/ProductCategory"
             element={
               isAuthenticated ? (
-                <ProductCategory  user={user} />
+                <ProductCategory user={user} />
               ) : (
                 <Navigate to="/login" />
               )
@@ -458,7 +417,7 @@ function App() {
             path="/ProductInformationConfiguration/ProductPricing"
             element={
               isAuthenticated ? (
-                <ProductPricing  user={user} />
+                <ProductPricing user={user} />
               ) : (
                 <Navigate to="/login" />
               )
@@ -497,6 +456,15 @@ function App() {
               ) : (
                 <Navigate to="/login" />
               )
+            }
+          />
+
+          {/* ------------ Reports and Analytics ------------ */}
+
+          <Route
+            path="/ReportsAnalytics/"
+            element={
+              isAuthenticated ? <ReportAnalytics /> : <Navigate to="/login" />
             }
           />
 
