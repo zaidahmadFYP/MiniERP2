@@ -1,1942 +1,3930 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import axios from "axios"
+import { useState, useEffect } from "react"
 import {
   Box,
-  Container,
-  Grid,
   Paper,
-  Typography,
-  Tabs,
   Tab,
-  Button,
+  Tabs,
+  Typography,
+  Grid,
+  Card,
+  CardContent,
   CircularProgress,
-  TextField,
   Chip,
+  Divider,
+  useTheme,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  TablePagination,
-  Snackbar,
-  Alert,
-  ThemeProvider,
-  createTheme,
+  LinearProgress,
+  alpha,
+  Tooltip,
+  IconButton,
+  Badge,
+  Button,
 } from "@mui/material"
 import {
-  Card,
-  Title,
-  AreaChart,
-  BarChart,
-  DonutChart,
-  LineChart,
-} from '@tremor/react'
-import {
-  Dashboard,
-  TrendingUp,
-  AttachMoney,
-  Inventory,
-  Restaurant,
-  AccountBalance,
-  ShoppingCart,
   PointOfSale,
+  TrendingUp,
+  ShoppingCart,
+  CheckCircle,
+  AttachMoney,
+  AccountBalance,
+  Inventory,
+  LocalShipping,
+  Restaurant,
+  ReceiptLong,
+  Info,
   Download,
   Refresh,
-  DateRange,
+  CalendarMonth,
   FilterList,
+  PieChart as PieChartIcon,
+  CompareArrows,
+  ArrowUpward,
+  ArrowDownward,
+  Warning,
+  Error,
+  Percent,
+  Print,
+  Share,
+  FileDownload,
+  Star,
 } from "@mui/icons-material"
-import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns"
-import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider"
-import { DatePicker } from "@mui/x-date-pickers/DatePicker"
-import { format, subDays, isWithinInterval, parseISO } from "date-fns"
-import MainContentWrapper from "../Finance and Sales/Bank Management/Components/MainContentWrapper"
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  Legend,
+  ResponsiveContainer,
+  Scatter,
+  ScatterChart,
+  ZAxis,
+  Treemap,
+  AreaChart,
+  Area,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+  ComposedChart,
+} from "recharts"
+import MainContentWrapper from "./MainContentWrapper"
+import { createTheme, ThemeProvider } from "@mui/material/styles"
 
-// API base URL from environment variable
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:5002/api"
-
-// Create axios instance with default config
-const api = axios.create({
-  baseURL: API_BASE_URL,
-})
-
-// Custom hook for API data fetching
-const useApiData = (endpoint, initialState = []) => {
-  const [data, setData] = useState(initialState)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-
-  const fetchData = useCallback(async () => {
-    setLoading(true)
-    try {
-      const response = await api.get(endpoint)
-      setData(response.data)
-      setError(null)
-    } catch (err) {
-      console.error(`Error fetching data from ${endpoint}:`, err)
-      setError(`Failed to load data: ${err.message}`)
-    } finally {
-      setLoading(false)
-    }
-  }, [endpoint])
-
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
-
-  return { data, loading, error, refetch: fetchData }
-}
-
-// Custom tooltip component for Recharts
-const CustomTooltip = ({ active, payload, label, valuePrefix = "", valueSuffix = "", labelFormatter }) => {
-  if (!active || !payload || !payload.length) return null
-
-  return (
-    <div
-      className="custom-tooltip"
-      style={{
-        backgroundColor: "#fff",
-        padding: "10px",
-        border: "1px solid #ccc",
-        borderRadius: "4px",
-        boxShadow: "0 2px 5px rgba(0,0,0,0.15)",
-      }}
-    >
-      <p className="label" style={{ margin: "0 0 5px", fontWeight: "bold" }}>
-        {labelFormatter ? labelFormatter(label) : label}
-      </p>
-      {payload.map((entry, index) => (
-        <p
-          key={`item-${index}`}
-          style={{
-            margin: "2px 0",
-            color: entry.color,
-            display: "flex",
-            justifyContent: "space-between",
-          }}
-        >
-          <span style={{ marginRight: "10px" }}>{entry.name}:</span>
-          <span style={{ fontWeight: "bold" }}>
-            {valuePrefix}
-            {typeof entry.value === "number" ? entry.value.toLocaleString() : entry.value}
-            {valueSuffix}
-          </span>
-        </p>
-      ))}
-    </div>
-  )
-}
-
-// Custom colors for charts
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8", "#82CA9D", "#ffc658", "#8dd1e1"]
-
-// Chart wrapper component to handle loading and empty states
-const ChartWrapper = ({ loading, data, height = 300, children, emptyMessage = "No data available" }) => {
-  if (loading) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height }}>
-        <CircularProgress />
-      </Box>
-    )
-  }
-
-  if (!data || !Array.isArray(data) || data.length === 0) {
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          height,
-          border: "1px dashed #ccc",
-          borderRadius: "4px",
-        }}
-      >
-        <Typography variant="body1" color="text.secondary">
-          {emptyMessage}
-        </Typography>
-      </Box>
-    )
-  }
-
-  return (
-    <Box sx={{ width: "100%", height }}>
-      {children}
-    </Box>
-  )
-}
-
-// Create a theme instance with specific chart configurations
-const chartTheme = createTheme({
+// Custom theme with the specified color
+const customTheme = createTheme({
   palette: {
-    mode: 'light',
     primary: {
-      main: '#1976d2',
+      main: "#f15a22",
+      light: alpha("#f15a22", 0.7),
+      dark: alpha("#f15a22", 0.9),
     },
     secondary: {
-      main: '#dc004e',
+      main: "#2c3e50",
+      light: alpha("#2c3e50", 0.7),
+      dark: alpha("#2c3e50", 0.9),
+    },
+    background: {
+      default: "#f8f9fa",
+      paper: "#ffffff",
+    },
+    success: {
+      main: "#2ecc71",
+      light: alpha("#2ecc71", 0.7),
+      dark: alpha("#2ecc71", 0.9),
+    },
+    warning: {
+      main: "#f39c12",
+      light: alpha("#f39c12", 0.7),
+      dark: alpha("#f39c12", 0.9),
+    },
+    error: {
+      main: "#e74c3c",
+      light: alpha("#e74c3c", 0.7),
+      dark: alpha("#e74c3c", 0.9),
+    },
+    info: {
+      main: "#3498db",
+      light: alpha("#3498db", 0.7),
+      dark: alpha("#3498db", 0.9),
+    },
+  },
+  typography: {
+    fontFamily: "'Poppins', 'Roboto', 'Helvetica', 'Arial', sans-serif",
+    h4: {
+      fontWeight: 700,
+      color: "#2c3e50",
+      fontSize: "1.75rem",
+    },
+    h5: {
+      fontWeight: 600,
+      color: "#2c3e50",
+      fontSize: "1.5rem",
+    },
+    h6: {
+      fontWeight: 600,
+      color: "#2c3e50",
+      fontSize: "1.25rem",
+    },
+    subtitle1: {
+      fontWeight: 500,
+      color: "#2c3e50",
+      fontSize: "1rem",
+    },
+    subtitle2: {
+      fontWeight: 500,
+      color: "#7f8c8d",
+      fontSize: "0.875rem",
+    },
+    body1: {
+      color: "#2c3e50",
+    },
+    body2: {
+      color: "#7f8c8d",
     },
   },
   components: {
-    MuiChart: {
+    MuiCard: {
       styleOverrides: {
         root: {
-          '& .MuiChartsAxis-tickLabel': {
-            fill: '#666',
-          },
-          '& .MuiChartsAxis-line': {
-            stroke: '#666',
+          borderRadius: 12,
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.05)",
+          transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+          "&:hover": {
+            transform: "translateY(-4px)",
+            boxShadow: "0 8px 16px rgba(0, 0, 0, 0.1)",
           },
         },
       },
     },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          borderRadius: 12,
+        },
+      },
+    },
+    MuiTab: {
+      styleOverrides: {
+        root: {
+          textTransform: "none",
+          fontWeight: 500,
+          minWidth: 120,
+          "&.Mui-selected": {
+            color: "#f15a22",
+          },
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          fontWeight: 500,
+        },
+        colorPrimary: {
+          backgroundColor: alpha("#f15a22", 0.1),
+          color: "#f15a22",
+        },
+      },
+    },
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          textTransform: "none",
+          fontWeight: 500,
+          borderRadius: 8,
+        },
+        containedPrimary: {
+          backgroundColor: "#f15a22",
+          "&:hover": {
+            backgroundColor: alpha("#f15a22", 0.9),
+          },
+        },
+        outlinedPrimary: {
+          borderColor: "#f15a22",
+          color: "#f15a22",
+          "&:hover": {
+            backgroundColor: alpha("#f15a22", 0.05),
+          },
+        },
+      },
+    },
+    MuiTableCell: {
+      styleOverrides: {
+        head: {
+          fontWeight: 600,
+          backgroundColor: alpha("#f15a22", 0.05),
+          color: "#2c3e50",
+        },
+      },
+    },
+    MuiDivider: {
+      styleOverrides: {
+        root: {
+          margin: "24px 0",
+        },
+      },
+    },
+    MuiLinearProgress: {
+      styleOverrides: {
+        colorPrimary: {
+          backgroundColor: alpha("#f15a22", 0.2),
+        },
+        barColorPrimary: {
+          backgroundColor: "#f15a22",
+        },
+      },
+    },
+    MuiCircularProgress: {
+      styleOverrides: {
+        colorPrimary: {
+          color: "#f15a22",
+        },
+      },
+    },
   },
-});
+})
 
-// Chart components with Tremor
-const RevenueChart = ({ data, loading }) => {
-  if (loading) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 300 }}>
-        <CircularProgress />
-      </Box>
-    );
+// Custom chart theme
+const chartTheme = {
+  colors: {
+    primary: "#f15a22",
+    secondary: "#2c3e50",
+    success: "#2ecc71",
+    warning: "#f39c12",
+    error: "#e74c3c",
+    info: "#3498db",
+    purple: "#9b59b6",
+    teal: "#1abc9c",
+    pink: "#e84393",
+    indigo: "#6c5ce7",
+  },
+  gradients: {
+    primary: ["#f15a22", "#ff7e47"],
+    secondary: ["#2c3e50", "#4a6b8a"],
+    success: ["#2ecc71", "#55e992"],
+    warning: ["#f39c12", "#ffbe45"],
+    error: ["#e74c3c", "#ff7768"],
+    info: ["#3498db", "#5dade2"],
+  },
+}
+
+// Enhanced Card component with gradient background
+const GradientCard = ({ children, gradient = "primary", sx = {} }) => {
+  const theme = useTheme()
+
+  const getGradient = (gradientName) => {
+    const colors = chartTheme.gradients[gradientName] || chartTheme.gradients.primary
+    return `linear-gradient(135deg, ${colors[0]} 0%, ${colors[1]} 100%)`
   }
-
-  if (!data || data.length === 0) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 300 }}>
-        <Typography>No data available</Typography>
-      </Box>
-    );
-  }
-
-  const chartData = data.map(item => ({
-    date: format(new Date(item.date), 'MMM dd'),
-    Revenue: item.amount,
-  }));
 
   return (
-    <Card>
-      <Title>Revenue Trend</Title>
-      <AreaChart
-        className="h-72 mt-4"
-        data={chartData}
-        index="date"
-        categories={["Revenue"]}
-        colors={["blue"]}
-        valueFormatter={(number) => `$${number.toLocaleString()}`}
-        yAxisWidth={40}
-      />
+    <Card
+      sx={{
+        background: getGradient(gradient),
+        color: "#fff",
+        ...sx,
+      }}
+    >
+      {children}
     </Card>
-  );
-};
+  )
+}
 
-const CategoryDistributionChart = ({ data, loading }) => {
-  if (loading) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 300 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  if (!data || data.length === 0) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 300 }}>
-        <Typography>No data available</Typography>
-      </Box>
-    );
-  }
-
-  const chartData = data.map(item => ({
-    name: item.category,
-    value: item.count,
-  }));
+// Enhanced Statistic Card component
+const StatisticCard = ({
+  title,
+  value,
+  icon,
+  subtitle,
+  change,
+  changeType = "percent",
+  color = "primary",
+  footer,
+  sx = {},
+}) => {
+  const isPositive = change > 0
+  const changeIcon = isPositive ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />
 
   return (
-    <Card>
-      <Title>Category Distribution</Title>
-      <DonutChart
-        className="h-72 mt-4"
-        data={chartData}
-        category="value"
-        index="name"
-        valueFormatter={(number) => number.toLocaleString()}
-        colors={["blue", "cyan", "indigo", "violet", "fuchsia"]}
-      />
-    </Card>
-  );
-};
-
-const VendorProductChart = ({ data, loading }) => {
-  if (loading) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 300 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  if (!data || data.length === 0) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 300 }}>
-        <Typography>No data available</Typography>
-      </Box>
-    );
-  }
-
-  const chartData = data.map(item => ({
-    name: item.name,
-    "Product Count": item.productCount,
-  }));
-
-  return (
-    <Card>
-      <Title>Vendor Products</Title>
-      <BarChart
-        className="h-72 mt-4"
-        data={chartData}
-        index="name"
-        categories={["Product Count"]}
-        colors={["blue"]}
-        valueFormatter={(number) => number.toLocaleString()}
-        yAxisWidth={40}
-      />
-    </Card>
-  );
-};
-
-const BankStatusChart = ({ data, loading }) => {
-  if (loading) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 300 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  if (!data || data.length === 0) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 300 }}>
-        <Typography>No data available</Typography>
-      </Box>
-    );
-  }
-
-  const chartData = data.map(item => ({
-    name: item.name,
-    value: item.value,
-  }));
-
-  return (
-    <Card>
-      <Title>Bank Status</Title>
-      <DonutChart
-        className="h-72 mt-4"
-        data={chartData}
-        category="value"
-        index="name"
-        valueFormatter={(number) => number.toLocaleString()}
-        colors={["green", "red"]}
-      />
-    </Card>
-  );
-};
-
-const PosStatusChart = ({ data, loading }) => {
-  if (loading) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 300 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  if (!data || data.length === 0) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 300 }}>
-        <Typography>No data available</Typography>
-      </Box>
-    );
-  }
-
-  const chartData = data.map(item => ({
-    name: item.status,
-    value: item.count,
-  }));
-
-  return (
-    <Card>
-      <Title>POS Status</Title>
-      <DonutChart
-        className="h-72 mt-4"
-        data={chartData}
-        category="value"
-        index="name"
-        valueFormatter={(number) => number.toLocaleString()}
-        colors={["green", "red", "yellow"]}
-      />
-    </Card>
-  );
-};
-
-const ReportAnalyticsContent = () => {
-  // State for tab management
-  const [activeTab, setActiveTab] = useState(0)
-  const [activePieIndex, setActivePieIndex] = useState(null)
-
-  // State for date range filters
-  const [startDate, setStartDate] = useState(subDays(new Date(), 30))
-  const [endDate, setEndDate] = useState(new Date())
-
-  // State for alerts
-  const [alert, setAlert] = useState({ open: false, message: "", severity: "info" })
-
-  // Fetch data from APIs
-  const { data: banks, loading: banksLoading, error: banksError } = useApiData("/banks")
-  const { data: purchaseOrders, loading: poLoading, error: poError } = useApiData("/purchase-orders")
-  const { data: posConfigs, loading: posConfigLoading, error: posConfigError } = useApiData("/posconfig")
-  const { data: transactions, loading: transactionsLoading, error: transactionsError } = useApiData("/transactions")
-  const { data: vendors, loading: vendorsLoading, error: vendorsError } = useApiData("/vendors")
-  const {
-    data: menuCategories,
-    loading: menuCategoriesLoading,
-    error: menuCategoriesError,
-  } = useApiData("/menu/categories")
-  const {
-    data: finishedGoods,
-    loading: finishedGoodsLoading,
-    error: finishedGoodsError,
-  } = useApiData("/menu/finishedgoods")
-  const { data: bomData, loading: bomLoading, error: bomError } = useApiData("/menu/bom")
-
-  // Handle tab change
-  const handleTabChange = (event, newValue) => {
-    setActiveTab(newValue)
-  }
-
-  // Handle alert close
-  const handleAlertClose = () => {
-    setAlert({ ...alert, open: false })
-  }
-
-  // Show error if any API fails
-  useEffect(() => {
-    const errors = [
-      banksError,
-      poError,
-      posConfigError,
-      transactionsError,
-      vendorsError,
-      menuCategoriesError,
-      finishedGoodsError,
-      bomError,
-    ].filter(Boolean)
-
-    if (errors.length > 0) {
-      setAlert({
-        open: true,
-        message: `Error loading data: ${errors[0]}`,
-        severity: "error",
-      })
-    }
-  }, [
-    banksError,
-    poError,
-    posConfigError,
-    transactionsError,
-    vendorsError,
-    menuCategoriesError,
-    finishedGoodsError,
-    bomError,
-  ])
-
-  // Apply date filter
-  const handleApplyFilter = () => {
-    // This would typically refetch data with the new date range
-    // For now, we'll just show a success message
-    setAlert({
-      open: true,
-      message: "Date filter applied successfully",
-      severity: "success",
-    })
-  }
-
-  // Reset date filter
-  const handleResetFilter = () => {
-    setStartDate(subDays(new Date(), 30))
-    setEndDate(new Date())
-    setAlert({
-      open: true,
-      message: "Date filter reset",
-      severity: "info",
-    })
-  }
-
-  // Filter data by date range
-  const filterByDateRange = (data, dateField = "createdAt") => {
-    if (!data || !Array.isArray(data)) return []
-
-    return data.filter((item) => {
-      if (!item[dateField]) return false
-      const itemDate = typeof item[dateField] === "string" ? parseISO(item[dateField]) : new Date(item[dateField])
-
-      return isWithinInterval(itemDate, { start: startDate, end: endDate })
-    })
-  }
-
-  // Calculate summary metrics
-  const calculateMetrics = () => {
-    // Filter data by date range
-    const filteredTransactions = filterByDateRange(transactions || [])
-    const filteredPurchaseOrders = filterByDateRange(purchaseOrders || [])
-
-    // Calculate metrics
-    const totalRevenue =
-      filteredTransactions?.reduce((sum, transaction) => {
-        return sum + (transaction.amount || transaction.total || 0)
-      }, 0) || 0
-
-    const totalExpenses = filteredPurchaseOrders?.reduce((sum, po) => sum + (po.totalAmount || 0), 0) || 0
-
-    const profit = totalRevenue - totalExpenses
-
-    const activeVendors = vendors?.filter((vendor) => vendor.isActive)?.length || 0
-
-    const totalProducts = finishedGoods?.length || 0
-
-    const activeBanks = banks?.filter((bank) => bank.isActive)?.length || 0
-
-    return {
-      totalRevenue,
-      totalExpenses,
-      profit,
-      activeVendors,
-      totalProducts,
-      activeBanks,
-    }
-  }
-
-  // Prepare chart data
-  const prepareRevenueChartData = () => {
-    if (!transactions || !Array.isArray(transactions) || transactions.length === 0) return []
-
-    // Group transactions by date
-    const groupedByDate = transactions.reduce((acc, transaction) => {
-      if (!transaction.createdAt && !transaction.date) return acc
-
-      const date = format(new Date(transaction.createdAt || transaction.date), "yyyy-MM-dd")
-
-      if (!acc[date]) {
-        acc[date] = { date, amount: 0, count: 0 }
-      }
-
-      acc[date].amount += transaction.amount || transaction.total || 0
-      acc[date].count += 1
-
-      return acc
-    }, {})
-
-    // Convert to array format for chart
-    return Object.values(groupedByDate).sort((a, b) => new Date(a.date) - new Date(b.date))
-  }
-
-  const prepareCategoryDistributionData = () => {
-    if (!finishedGoods || !Array.isArray(finishedGoods) || finishedGoods.length === 0) {
-      // Return sample data if no real data is available
-      return [
-        { category: "Category 1", count: 5, value: 500 },
-        { category: "Category 2", count: 3, value: 300 },
-        { category: "Category 3", count: 7, value: 700 },
-      ]
-    }
-
-    // Group products by category
-    const groupedByCategory = finishedGoods.reduce((acc, product) => {
-      const categoryName = product.categoryName || product.category?.name || "Uncategorized"
-
-      if (!acc[categoryName]) {
-        acc[categoryName] = {
-          category: categoryName,
-          count: 0,
-          value: 0,
-        }
-      }
-
-      acc[categoryName].count += 1
-      acc[categoryName].value += product.price || 0
-
-      return acc
-    }, {})
-
-    // Convert to array format for chart
-    return Object.values(groupedByCategory)
-  }
-
-  const prepareVendorProductData = () => {
-    if (!vendors || !Array.isArray(vendors) || vendors.length === 0) {
-      // Return sample data if no real data is available
-      return [
-        { name: "Vendor 1", productCount: 12, isActive: true },
-        { name: "Vendor 2", productCount: 8, isActive: false },
-        { name: "Vendor 3", productCount: 15, isActive: true },
-      ]
-    }
-
-    return vendors
-      .map((vendor) => ({
-        name: vendor.vendorName || vendor.name || "Unknown Vendor",
-        productCount: vendor.productList?.length || 0,
-        isActive: vendor.isActive !== undefined ? vendor.isActive : true,
-      }))
-      .sort((a, b) => b.productCount - a.productCount)
-      .slice(0, 10)
-  }
-
-  // Prepare monthly revenue and expenses data
-  const prepareMonthlyFinancialData = () => {
-    if (
-      (!transactions || !Array.isArray(transactions) || transactions.length === 0) &&
-      (!purchaseOrders || !Array.isArray(purchaseOrders) || purchaseOrders.length === 0)
-    ) {
-      // Return sample data if no real data is available
-      return [
-        { name: "Jan 2023", revenue: 4000, expenses: 2400, profit: 1600 },
-        { name: "Feb 2023", revenue: 3000, expenses: 1398, profit: 1602 },
-        { name: "Mar 2023", revenue: 2000, expenses: 1800, profit: 200 },
-        { name: "Apr 2023", revenue: 2780, expenses: 3908, profit: -1128 },
-        { name: "May 2023", revenue: 1890, expenses: 4800, profit: -2910 },
-        { name: "Jun 2023", revenue: 2390, expenses: 3800, profit: -1410 },
-      ]
-    }
-
-    // Create a map for months
-    const monthsData = {}
-
-    // Process transactions (revenue)
-    if (transactions && Array.isArray(transactions)) {
-      transactions.forEach((transaction) => {
-        if (!transaction.createdAt && !transaction.date) return
-
-        const date = new Date(transaction.createdAt || transaction.date)
-        const monthKey = format(date, "MMM yyyy")
-
-        if (!monthsData[monthKey]) {
-          monthsData[monthKey] = {
-            name: monthKey,
-            revenue: 0,
-            expenses: 0,
-            profit: 0,
-          }
-        }
-
-        monthsData[monthKey].revenue += transaction.amount || transaction.total || 0
-      })
-    }
-
-    // Process purchase orders (expenses)
-    if (purchaseOrders && Array.isArray(purchaseOrders)) {
-      purchaseOrders.forEach((po) => {
-        if (!po.createdAt) return
-
-        const date = new Date(po.createdAt)
-        const monthKey = format(date, "MMM yyyy")
-
-        if (!monthsData[monthKey]) {
-          monthsData[monthKey] = {
-            name: monthKey,
-            revenue: 0,
-            expenses: 0,
-            profit: 0,
-          }
-        }
-
-        monthsData[monthKey].expenses += po.totalAmount || 0
-      })
-    }
-
-    // Calculate profit
-    Object.values(monthsData).forEach((month) => {
-      month.profit = month.revenue - month.expenses
-    })
-
-    // Convert to array and sort by date
-    return Object.values(monthsData).sort((a, b) => {
-      const dateA = new Date(a.name)
-      const dateB = new Date(b.name)
-      return dateA - dateB
-    })
-  }
-
-  // Prepare inventory stock data
-  const prepareInventoryStockData = () => {
-    if (!finishedGoods || !Array.isArray(finishedGoods) || finishedGoods.length === 0) {
-      // Return sample data if no real data is available
-      return [
-        { name: "Product 1", stock: 25, reorderLevel: 10, category: "Category 1" },
-        { name: "Product 2", stock: 15, reorderLevel: 5, category: "Category 2" },
-        { name: "Product 3", stock: 8, reorderLevel: 10, category: "Category 1" },
-      ]
-    }
-
-    return finishedGoods
-      .filter((item) => item.name && item.stock !== undefined)
-      .map((item) => ({
-        name: item.name,
-        stock: item.stock || 0,
-        reorderLevel: item.reorderLevel || Math.floor((item.stock || 0) * 0.2) || 5, // Example reorder level
-        category: item.categoryName || item.category?.name || "Uncategorized",
-      }))
-      .sort((a, b) => b.stock - a.stock)
-      .slice(0, 10)
-  }
-
-  // Prepare POS status data
-  const preparePosStatusData = () => {
-    if (!posConfigs || !Array.isArray(posConfigs) || posConfigs.length === 0) {
-      // Return sample data if no real data is available
-      return [
-        { status: "Online", count: 3 },
-        { status: "Offline", count: 1 },
-      ]
-    }
-
-    const statusCounts = posConfigs.reduce((acc, config) => {
-      const status = config.POSStatus || "Unknown"
-      acc[status] = (acc[status] || 0) + 1
-      return acc
-    }, {})
-
-    return Object.entries(statusCounts).map(([status, count]) => ({ status, count }))
-  }
-
-  // Prepare bank status data
-  const prepareBankStatusData = () => {
-    if (!banks || !Array.isArray(banks) || banks.length === 0) {
-      // Return sample data if no real data is available
-      return [
-        { name: "Active", value: 3 },
-        { name: "Inactive", value: 1 },
-      ]
-    }
-
-    return [
-      { name: "Active", value: banks.filter((bank) => bank.isActive).length || 0 },
-      { name: "Inactive", value: banks.filter((bank) => !bank.isActive).length || 0 },
-    ]
-  }
-
-  // Prepare purchase order data
-  const preparePurchaseOrderData = () => {
-    // Return sample data if no real data is available
-    return [
-      { month: "Jan", count: 12, value: 4500 },
-      { month: "Feb", count: 9, value: 3200 },
-      { month: "Mar", count: 15, value: 5800 },
-      { month: "Apr", count: 11, value: 4200 },
-      { month: "May", count: 13, value: 4900 },
-      { month: "Jun", count: 10, value: 3800 },
-    ]
-  }
-
-  // Prepare profit margin data
-  const prepareProfitMarginData = () => {
-    // Return sample data if no real data is available
-    return [
-      { month: "Jan", grossMargin: 40, netMargin: 25 },
-      { month: "Feb", grossMargin: 35, netMargin: 20 },
-      { month: "Mar", grossMargin: 45, netMargin: 30 },
-      { month: "Apr", grossMargin: 42, netMargin: 28 },
-      { month: "May", grossMargin: 38, netMargin: 22 },
-      { month: "Jun", grossMargin: 41, netMargin: 26 },
-    ]
-  }
-
-  // Export data to CSV
-  const exportToCSV = (data, filename) => {
-    if (!data || !Array.isArray(data) || data.length === 0) {
-      setAlert({
-        open: true,
-        message: "No data to export",
-        severity: "warning",
-      })
-      return
-    }
-
-    // Get headers from first object
-    const headers = Object.keys(data[0])
-
-    // Convert data to CSV format
-    const csvRows = []
-
-    // Add headers
-    csvRows.push(headers.join(","))
-
-    // Add rows
-    data.forEach((row) => {
-      const values = headers.map((header) => {
-        const value = row[header]
-
-        // Handle nested objects and arrays
-        if (typeof value === "object" && value !== null) {
-          return `"${JSON.stringify(value).replace(/"/g, '""')}"`
-        }
-
-        // Handle strings with commas
-        if (typeof value === "string" && value.includes(",")) {
-          return `"${value}"`
-        }
-
-        return value
-      })
-
-      csvRows.push(values.join(","))
-    })
-
-    // Create CSV file
-    const csvString = csvRows.join("\n")
-    const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" })
-
-    // Download CSV file
-    const link = document.createElement("a")
-    const url = URL.createObjectURL(blob)
-
-    link.setAttribute("href", url)
-    link.setAttribute("download", `${filename}_${format(new Date(), "yyyy-MM-dd")}.csv`)
-    link.style.visibility = "hidden"
-
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-
-    setAlert({
-      open: true,
-      message: `${filename} exported successfully`,
-      severity: "success",
-    })
-  }
-
-  // Calculate metrics
-  const metrics = calculateMetrics()
-
-  // Prepare chart data
-  const revenueChartData = prepareRevenueChartData()
-  const categoryDistributionData = prepareCategoryDistributionData()
-  const vendorProductData = prepareVendorProductData()
-  const monthlyFinancialData = prepareMonthlyFinancialData()
-  const inventoryStockData = prepareInventoryStockData()
-  const posStatusData = preparePosStatusData()
-  const bankStatusData = prepareBankStatusData()
-  const purchaseOrderData = preparePurchaseOrderData()
-  const profitMarginData = prepareProfitMarginData()
-
-  // Color scales for different chart types
-  const REVENUE_COLOR = "#8884d8"
-  const EXPENSE_COLOR = "#82ca9d"
-  const PROFIT_COLOR = "#ffc658"
-  const STOCK_COLOR = "#0088FE"
-  const REORDER_COLOR = "#FF8042"
-
-  // Loading state
-  const isLoading =
-    banksLoading ||
-    poLoading ||
-    posConfigLoading ||
-    transactionsLoading ||
-    vendorsLoading ||
-    menuCategoriesLoading ||
-    finishedGoodsLoading ||
-    bomLoading
-
-  return (
-    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-      {/* Alert Snackbar */}
-      <Snackbar
-        open={alert.open}
-        autoHideDuration={6000}
-        onClose={handleAlertClose}
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
-      >
-        <Alert onClose={handleAlertClose} severity={alert.severity} sx={{ width: "100%" }}>
-          {alert.message}
-        </Alert>
-      </Snackbar>
-
-      <Typography variant="h4" component="h1" gutterBottom>
-        Report & Analytics Dashboard
-      </Typography>
-
-      {/* Date Range Filter */}
-      <Paper sx={{ p: 2, mb: 3, display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
-        <DateRange color="primary" />
-        <Typography variant="body1" sx={{ mr: 2 }}>
-          Date Range:
-        </Typography>
-
-        <TextField
-          label="Start Date"
-          type="date"
-          value={format(startDate, 'yyyy-MM-dd')}
-          onChange={(e) => setStartDate(new Date(e.target.value))}
-          size="small"
-          sx={{ width: 170 }}
-          InputLabelProps={{
-            shrink: true,
+    <GradientCard gradient={color} sx={sx}>
+      <CardContent sx={{ p: 3 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
           }}
-        />
-
-        <Typography variant="body1" sx={{ mx: 1 }}>
-          to
-        </Typography>
-
-        <TextField
-          label="End Date"
-          type="date"
-          value={format(endDate, 'yyyy-MM-dd')}
-          onChange={(e) => setEndDate(new Date(e.target.value))}
-          size="small"
-          sx={{ width: 170 }}
-          InputLabelProps={{
-            shrink: true,
-          }}
-        />
-
-        <Button variant="contained" startIcon={<FilterList />} sx={{ ml: 2 }} onClick={handleApplyFilter}>
-          Apply Filter
-        </Button>
-        <Button variant="outlined" startIcon={<Refresh />} sx={{ ml: 1 }} onClick={handleResetFilter}>
-          Reset
-        </Button>
-      </Paper>
-
-      {/* Summary Metrics */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={4} lg={2}>
-          <Paper
-            sx={{
-              p: 2,
-              display: "flex",
-              flexDirection: "column",
-              height: 140,
-              bgcolor: "#e3f2fd",
-              transition: "transform 0.3s, box-shadow 0.3s",
-              "&:hover": {
-                transform: "translateY(-5px)",
-                boxShadow: "0 8px 16px rgba(0,0,0,0.1)",
-              },
-            }}
-          >
-            <Typography variant="subtitle2" color="textSecondary">
-              Total Revenue
-            </Typography>
-            <Typography variant="h4" component="div" sx={{ mt: 2, fontWeight: "bold" }}>
-              ${metrics.totalRevenue.toLocaleString()}
-            </Typography>
-            <Box sx={{ display: "flex", alignItems: "center", mt: "auto" }}>
-              <TrendingUp color="primary" fontSize="small" />
-              <Typography variant="body2" color="primary" sx={{ ml: 1 }}>
-                +5.3% from last period
-              </Typography>
-            </Box>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} sm={6} md={4} lg={2}>
-          <Paper
-            sx={{
-              p: 2,
-              display: "flex",
-              flexDirection: "column",
-              height: 140,
-              bgcolor: "#fff8e1",
-              transition: "transform 0.3s, box-shadow 0.3s",
-              "&:hover": {
-                transform: "translateY(-5px)",
-                boxShadow: "0 8px 16px rgba(0,0,0,0.1)",
-              },
-            }}
-          >
-            <Typography variant="subtitle2" color="textSecondary">
-              Total Expenses
-            </Typography>
-            <Typography variant="h4" component="div" sx={{ mt: 2, fontWeight: "bold" }}>
-              ${metrics.totalExpenses.toLocaleString()}
-            </Typography>
-            <Box sx={{ display: "flex", alignItems: "center", mt: "auto" }}>
-              <TrendingUp color="warning" fontSize="small" />
-              <Typography variant="body2" color="warning.main" sx={{ ml: 1 }}>
-                +2.1% from last period
-              </Typography>
-            </Box>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} sm={6} md={4} lg={2}>
-          <Paper
-            sx={{
-              p: 2,
-              display: "flex",
-              flexDirection: "column",
-              height: 140,
-              bgcolor: "#e8f5e9",
-              transition: "transform 0.3s, box-shadow 0.3s",
-              "&:hover": {
-                transform: "translateY(-5px)",
-                boxShadow: "0 8px 16px rgba(0,0,0,0.1)",
-              },
-            }}
-          >
-            <Typography variant="subtitle2" color="textSecondary">
-              Net Profit
-            </Typography>
-            <Typography variant="h4" component="div" sx={{ mt: 2, fontWeight: "bold" }}>
-              ${metrics.profit.toLocaleString()}
-            </Typography>
-            <Box sx={{ display: "flex", alignItems: "center", mt: "auto" }}>
-              <TrendingUp color="success" fontSize="small" />
-              <Typography variant="body2" color="success.main" sx={{ ml: 1 }}>
-                +7.8% from last period
-              </Typography>
-            </Box>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} sm={6} md={4} lg={2}>
-          <Paper
-            sx={{
-              p: 2,
-              display: "flex",
-              flexDirection: "column",
-              height: 140,
-              bgcolor: "#f3e5f5",
-              transition: "transform 0.3s, box-shadow 0.3s",
-              "&:hover": {
-                transform: "translateY(-5px)",
-                boxShadow: "0 8px 16px rgba(0,0,0,0.1)",
-              },
-            }}
-          >
-            <Typography variant="subtitle2" color="textSecondary">
-              Active Vendors
-            </Typography>
-            <Typography variant="h4" component="div" sx={{ mt: 2, fontWeight: "bold" }}>
-              {metrics.activeVendors}
-            </Typography>
-            <Box sx={{ display: "flex", alignItems: "center", mt: "auto" }}>
-              <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                Total: {vendors?.length || 0}
-              </Typography>
-            </Box>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} sm={6} md={4} lg={2}>
-          <Paper
-            sx={{
-              p: 2,
-              display: "flex",
-              flexDirection: "column",
-              height: 140,
-              bgcolor: "#e0f7fa",
-              transition: "transform 0.3s, box-shadow 0.3s",
-              "&:hover": {
-                transform: "translateY(-5px)",
-                boxShadow: "0 8px 16px rgba(0,0,0,0.1)",
-              },
-            }}
-          >
-            <Typography variant="subtitle2" color="textSecondary">
-              Total Products
-            </Typography>
-            <Typography variant="h4" component="div" sx={{ mt: 2, fontWeight: "bold" }}>
-              {metrics.totalProducts}
-            </Typography>
-            <Box sx={{ display: "flex", alignItems: "center", mt: "auto" }}>
-              <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                In {categoryDistributionData.length} categories
-              </Typography>
-            </Box>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} sm={6} md={4} lg={2}>
-          <Paper
-            sx={{
-              p: 2,
-              display: "flex",
-              flexDirection: "column",
-              height: 140,
-              bgcolor: "#fce4ec",
-              transition: "transform 0.3s, box-shadow 0.3s",
-              "&:hover": {
-                transform: "translateY(-5px)",
-                boxShadow: "0 8px 16px rgba(0,0,0,0.1)",
-              },
-            }}
-          >
-            <Typography variant="subtitle2" color="textSecondary">
-              Active Banks
-            </Typography>
-            <Typography variant="h4" component="div" sx={{ mt: 2, fontWeight: "bold" }}>
-              {metrics.activeBanks}
-            </Typography>
-            <Box sx={{ display: "flex", alignItems: "center", mt: "auto" }}>
-              <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                Total: {banks?.length || 0}
-              </Typography>
-            </Box>
-          </Paper>
-        </Grid>
-      </Grid>
-
-      {/* Tabs for different reports */}
-      <Paper sx={{ mb: 3 }}>
-        <Tabs
-          value={activeTab}
-          onChange={handleTabChange}
-          variant="scrollable"
-          scrollButtons="auto"
-          sx={{ borderBottom: 1, borderColor: "divider" }}
         >
-          <Tab icon={<Dashboard />} label="Overview" />
-          <Tab icon={<AttachMoney />} label="Financial" />
-          <Tab icon={<ShoppingCart />} label="Purchase Orders" />
-          <Tab icon={<Inventory />} label="Inventory" />
-          <Tab icon={<Restaurant />} label="Menu Analysis" />
-          <Tab icon={<AccountBalance />} label="Banking" />
-          <Tab icon={<PointOfSale />} label="POS Config" />
-        </Tabs>
-
-        {/* Loading indicator */}
-        {isLoading && (
-          <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
-            <CircularProgress />
+          <Box>
+            <Typography variant="subtitle2" sx={{ color: "#fff", opacity: 0.9, mb: 1 }}>
+              {title}
+            </Typography>
+            <Typography variant="h4" sx={{ mt: 1, fontWeight: 700, color: "#fff" }}>
+              {value}
+            </Typography>
+            {change !== undefined && (
+              <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: isPositive ? "#ffffff" : "#ffffff",
+                    opacity: 0.9,
+                    display: "flex",
+                    alignItems: "center",
+                    fontWeight: 500,
+                  }}
+                >
+                  {isPositive ? "+" : ""}
+                  {change}
+                  {changeType === "percent" ? "%" : ""}
+                  {changeIcon}
+                </Typography>
+                <Typography variant="body2" sx={{ color: "#ffffff", opacity: 0.7, ml: 1 }}>
+                  vs last period
+                </Typography>
+              </Box>
+            )}
+            {subtitle && (
+              <Typography variant="body2" sx={{ mt: 1, opacity: 0.8, color: "#fff" }}>
+                {subtitle}
+              </Typography>
+            )}
+          </Box>
+          {icon && (
+            <Box
+              sx={{
+                backgroundColor: "rgba(255, 255, 255, 0.2)",
+                borderRadius: "50%",
+                p: 1.5,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {icon}
+            </Box>
+          )}
+        </Box>
+        {footer && (
+          <Box
+            sx={{
+              mt: 2,
+              pt: 2,
+              borderTop: "1px solid rgba(255, 255, 255, 0.2)",
+            }}
+          >
+            {footer}
           </Box>
         )}
+      </CardContent>
+    </GradientCard>
+  )
+}
 
-        {/* Tab content */}
-        {!isLoading && (
-          <>
-            {/* Overview Tab */}
-            {activeTab === 0 && (
-              <Box sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                  Business Overview
-                </Typography>
+// Enhanced metric card with white background
+const MetricCard = ({ title, value, change, icon, color = "primary", subtitle, footer, sx = {} }) => {
+  const theme = useTheme()
+  const isPositive = change > 0
 
-                {/* Revenue Trend Chart */}
-                <Paper sx={{ p: 2, mb: 3 }}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Revenue Trend
-                  </Typography>
-                  <RevenueChart data={revenueChartData} loading={transactionsLoading} />
-                </Paper>
-
-                {/* Category and Vendor Charts */}
-                <Grid container spacing={3}>
-                  <Grid item xs={12} md={6}>
-                    <Paper sx={{ p: 2 }}>
-                      <Typography variant="subtitle1" gutterBottom>
-                        Product Category Distribution
-                      </Typography>
-                      <CategoryDistributionChart data={categoryDistributionData} loading={finishedGoodsLoading} />
-                    </Paper>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Paper sx={{ p: 2 }}>
-                      <Typography variant="subtitle1" gutterBottom>
-                        Top Vendors by Product Count
-                      </Typography>
-                      <VendorProductChart data={vendorProductData} loading={vendorsLoading} />
-                    </Paper>
-                  </Grid>
-                </Grid>
-
-                {/* Recent Transactions */}
-                <Paper sx={{ p: 2, mt: 3 }}>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-                    <Typography variant="subtitle1">Recent Transactions</Typography>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<Download />}
-                      onClick={() => exportToCSV(transactions, "transactions")}
-                    >
-                      Export
-                    </Button>
-                  </Box>
-                  <TableContainer>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Transaction ID</TableCell>
-                          <TableCell>Date</TableCell>
-                          <TableCell>Type</TableCell>
-                          <TableCell>Amount</TableCell>
-                          <TableCell>Status</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {transactions &&
-                          transactions.slice(0, 5).map((transaction) => (
-                            <TableRow key={transaction._id || transaction.id}>
-                              <TableCell>{transaction._id || transaction.id}</TableCell>
-                              <TableCell>
-                                {transaction.createdAt || transaction.date
-                                  ? format(new Date(transaction.createdAt || transaction.date), "MMM dd, yyyy")
-                                  : "N/A"}
-                              </TableCell>
-                              <TableCell>{transaction.type || "Sale"}</TableCell>
-                              <TableCell>
-                                ${(transaction.amount || transaction.total || 0).toLocaleString()}
-                              </TableCell>
-                              <TableCell>
-                                <Chip
-                                  label={transaction.status || "Completed"}
-                                  color={
-                                    transaction.status === "Failed"
-                                      ? "error"
-                                      : transaction.status === "Pending"
-                                        ? "warning"
-                                        : "success"
-                                  }
-                                  size="small"
-                                />
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        {(!transactions || transactions.length === 0) && (
-                          <TableRow>
-                            <TableCell colSpan={5} align="center">
-                              No transactions found
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                  {transactions && transactions.length > 5 && (
-                    <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
-                      <Button variant="text" size="small">
-                        View All Transactions
-                      </Button>
-                    </Box>
+  return (
+    <Card
+      sx={{
+        p: 0,
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        ...sx,
+      }}
+    >
+      <CardContent sx={{ p: 3, flex: 1 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+          }}
+        >
+          <Box>
+            <Typography variant="subtitle2" sx={{ color: "#7f8c8d", mb: 1 }}>
+              {title}
+            </Typography>
+            <Typography variant="h4" sx={{ color: "#2c3e50", fontWeight: 700, mb: 1 }}>
+              {value}
+            </Typography>
+            {change !== undefined && (
+              <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: isPositive ? theme.palette.success.main : theme.palette.error.main,
+                    display: "flex",
+                    alignItems: "center",
+                    fontWeight: 500,
+                  }}
+                >
+                  {isPositive ? "+" : ""}
+                  {change}%
+                  {isPositive ? (
+                    <ArrowUpward fontSize="small" sx={{ ml: 0.5 }} />
+                  ) : (
+                    <ArrowDownward fontSize="small" sx={{ ml: 0.5 }} />
                   )}
-                </Paper>
+                </Typography>
+                <Typography variant="body2" sx={{ color: "#7f8c8d", ml: 1 }}>
+                  vs last period
+                </Typography>
               </Box>
             )}
-
-            {/* Financial Tab */}
-            {activeTab === 1 && (
-              <Box sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                  Financial Analysis
-                </Typography>
-
-                {/* Revenue vs Expenses Chart */}
-                <Paper sx={{ p: 2, mb: 3 }}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Revenue vs Expenses
-                  </Typography>
-                  <ChartWrapper loading={transactionsLoading || poLoading} data={monthlyFinancialData}>
-                    <LineChart
-                      xAxis={[{ 
-                        data: monthlyFinancialData.map(item => item.name),
-                        scaleType: 'band',
-                      }]}
-                      series={[
-                        {
-                          data: monthlyFinancialData.map(item => item.revenue),
-                          color: REVENUE_COLOR,
-                        },
-                        {
-                          data: monthlyFinancialData.map(item => item.expenses),
-                          color: EXPENSE_COLOR,
-                        },
-                      ]}
-                      height={300}
-                    />
-                  </ChartWrapper>
-                </Paper>
-
-                {/* Profit Margin Analysis */}
-                <Paper sx={{ p: 2, mb: 3 }}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Profit Margin Analysis
-                  </Typography>
-                  <ChartWrapper data={profitMarginData}>
-                    <LineChart
-                      xAxis={[{ 
-                        data: profitMarginData.map(item => item.month),
-                        scaleType: 'band',
-                      }]}
-                      series={[
-                        {
-                          data: profitMarginData.map(item => item.grossMargin),
-                          color: REVENUE_COLOR,
-                        },
-                        {
-                          data: profitMarginData.map(item => item.netMargin),
-                          color: EXPENSE_COLOR,
-                        },
-                      ]}
-                      height={300}
-                    />
-                  </ChartWrapper>
-                </Paper>
-
-                {/* Transactions Table */}
-                <Paper sx={{ p: 2 }}>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-                    <Typography variant="subtitle1">Transaction Details</Typography>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<Download />}
-                      onClick={() => exportToCSV(transactions, "detailed_transactions")}
-                    >
-                      Export
-                    </Button>
-                  </Box>
-                  <TableContainer>
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Transaction ID</TableCell>
-                          <TableCell>Date</TableCell>
-                          <TableCell>Type</TableCell>
-                          <TableCell>Amount</TableCell>
-                          <TableCell>Status</TableCell>
-                          <TableCell>Payment Method</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {transactions &&
-                          transactions.map((transaction) => (
-                            <TableRow key={transaction._id || transaction.id}>
-                              <TableCell>{transaction._id || transaction.id}</TableCell>
-                              <TableCell>
-                                {transaction.createdAt || transaction.date
-                                  ? format(new Date(transaction.createdAt || transaction.date), "MMM dd, yyyy")
-                                  : "N/A"}
-                              </TableCell>
-                              <TableCell>{transaction.type || "Sale"}</TableCell>
-                              <TableCell>
-                                ${(transaction.amount || transaction.total || 0).toLocaleString()}
-                              </TableCell>
-                              <TableCell>
-                                <Chip
-                                  label={transaction.status || "Completed"}
-                                  color={
-                                    transaction.status === "Failed"
-                                      ? "error"
-                                      : transaction.status === "Pending"
-                                        ? "warning"
-                                        : "success"
-                                  }
-                                  size="small"
-                                />
-                              </TableCell>
-                              <TableCell>{transaction.paymentMethod || "Cash"}</TableCell>
-                            </TableRow>
-                          ))}
-                        {(!transactions || transactions.length === 0) && (
-                          <TableRow>
-                            <TableCell colSpan={6} align="center">
-                              No transactions found
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                  {transactions && transactions.length > 0 && (
-                    <TablePagination
-                      component="div"
-                      count={transactions.length}
-                      rowsPerPage={10}
-                      page={0}
-                      onPageChange={() => {}}
-                      onRowsPerPageChange={() => {}}
-                    />
-                  )}
-                </Paper>
-              </Box>
+            {subtitle && (
+              <Typography variant="body2" sx={{ mt: 1, color: "#7f8c8d" }}>
+                {subtitle}
+              </Typography>
             )}
+          </Box>
+          {icon && (
+            <Box
+              sx={{
+                backgroundColor: alpha(theme.palette[color].main, 0.1),
+                borderRadius: "50%",
+                p: 1.5,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                "& .MuiSvgIcon-root": {
+                  color: theme.palette[color].main,
+                },
+              }}
+            >
+              {icon}
+            </Box>
+          )}
+        </Box>
+      </CardContent>
+      {footer && (
+        <Box
+          sx={{
+            p: 2,
+            pt: 0,
+            borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+            backgroundColor: alpha(theme.palette.background.default, 0.5),
+          }}
+        >
+          {footer}
+        </Box>
+      )}
+    </Card>
+  )
+}
 
-            {/* Purchase Orders Tab */}
-            {activeTab === 2 && (
-              <Box sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                  Purchase Order Analysis
-                </Typography>
+// TabPanel component to handle tab content
+function TabPanel(props) {
+  const { children, value, index, ...other } = props
 
-                {/* Purchase Orders by Month Chart */}
-                <Paper sx={{ p: 2, mb: 3 }}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Purchase Orders by Month
-                  </Typography>
-                  <ChartWrapper data={purchaseOrderData}>
-                    <LineChart
-                      xAxis={[{ 
-                        data: purchaseOrderData.map(item => item.month),
-                        scaleType: 'band',
-                      }]}
-                      series={[
-                        {
-                          data: purchaseOrderData.map(item => item.count),
-                          color: REVENUE_COLOR,
-                        },
-                        {
-                          data: purchaseOrderData.map(item => item.value),
-                          color: EXPENSE_COLOR,
-                        },
-                      ]}
-                      height={300}
-                    />
-                  </ChartWrapper>
-                </Paper>
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`analytics-tabpanel-${index}`}
+      aria-labelledby={`analytics-tab-${index}`}
+      {...other}
+    >
+      {value === index && <Box>{children}</Box>}
+    </div>
+  )
+}
 
-                {/* Purchase Orders Table */}
-                <Paper sx={{ p: 2 }}>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-                    <Typography variant="subtitle1">Purchase Order Details</Typography>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<Download />}
-                      onClick={() => exportToCSV(purchaseOrders, "purchase_orders")}
-                    >
-                      Export
-                    </Button>
-                  </Box>
-                  <TableContainer>
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Order Number</TableCell>
-                          <TableCell>Date</TableCell>
-                          <TableCell>Vendor</TableCell>
-                          <TableCell>Items</TableCell>
-                          <TableCell>Total Amount</TableCell>
-                          <TableCell>Status</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {purchaseOrders &&
-                          purchaseOrders.map((po) => (
-                            <TableRow key={po._id || po.id}>
-                              <TableCell>{po.orderNumber}</TableCell>
-                              <TableCell>
-                                {po.createdAt ? format(new Date(po.createdAt), "MMM dd, yyyy") : "N/A"}
-                              </TableCell>
-                              <TableCell>{po.vendorName || po.vendor || "N/A"}</TableCell>
-                              <TableCell>{po.lineItems?.length || 0}</TableCell>
-                              <TableCell>${po.totalAmount?.toLocaleString() || "0"}</TableCell>
-                              <TableCell>
-                                <Chip
-                                  label={po.status || "Pending"}
-                                  color={
-                                    po.status === "Cancelled"
-                                      ? "error"
-                                      : po.status === "Pending"
-                                        ? "warning"
-                                        : po.status === "Delivered"
-                                          ? "success"
-                                          : "info"
-                                  }
-                                  size="small"
-                                />
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        {(!purchaseOrders || purchaseOrders.length === 0) && (
-                          <TableRow>
-                            <TableCell colSpan={6} align="center">
-                              No purchase orders found
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                  {purchaseOrders && purchaseOrders.length > 0 && (
-                    <TablePagination
-                      component="div"
-                      count={purchaseOrders.length}
-                      rowsPerPage={10}
-                      page={0}
-                      onPageChange={() => {}}
-                      onRowsPerPageChange={() => {}}
-                    />
-                  )}
-                </Paper>
-              </Box>
-            )}
+function a11yProps(index) {
+  return {
+    id: `analytics-tab-${index}`,
+    "aria-controls": `analytics-tabpanel-${index}`,
+  }
+}
 
-            {/* Inventory Tab */}
-            {activeTab === 3 && (
-              <Box sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                  Inventory Analysis
-                </Typography>
+// Enhanced chart components
+const ChartContainer = ({ title, subtitle, children, height = 300, actions, sx = {} }) => {
+  return (
+    <Paper
+      elevation={2}
+      sx={{
+        p: 0,
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        "&:hover": {
+          boxShadow: "0 8px 16px rgba(0, 0, 0, 0.1)",
+        },
+        ...sx,
+      }}
+    >
+      <Box
+        sx={{
+          p: 3,
+          pb: 2,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          borderBottom: "1px solid rgba(0, 0, 0, 0.05)",
+        }}
+      >
+        <Box>
+          <Typography
+            variant="subtitle1"
+            sx={{
+              color: "#2c3e50",
+              fontWeight: 600,
+            }}
+          >
+            {title}
+          </Typography>
+          {subtitle && (
+            <Typography
+              variant="body2"
+              sx={{
+                color: "#7f8c8d",
+                mt: 0.5,
+              }}
+            >
+              {subtitle}
+            </Typography>
+          )}
+        </Box>
+        {actions && <Box sx={{ display: "flex", gap: 1 }}>{actions}</Box>}
+      </Box>
+      <Box sx={{ flex: 1, minHeight: height, p: 2 }}>{children}</Box>
+    </Paper>
+  )
+}
 
-                {/* Inventory Stock Levels */}
-                <Paper sx={{ p: 2, mb: 3 }}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Inventory Stock Levels
-                  </Typography>
-                  <ChartWrapper loading={finishedGoodsLoading} data={inventoryStockData}>
-                    <BarChart
-                      xAxis={[{ 
-                        data: inventoryStockData.map(item => item.name),
-                        scaleType: 'band',
-                      }]}
-                      series={[
-                        {
-                          data: inventoryStockData.map(item => item.stock),
-                          color: STOCK_COLOR,
-                        },
-                      ]}
-                      height={300}
-                    />
-                  </ChartWrapper>
-                </Paper>
-
-                {/* BOM Data Table */}
-                <Paper sx={{ p: 2, mb: 3 }}>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-                    <Typography variant="subtitle1">Bill of Materials (BOM)</Typography>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<Download />}
-                      onClick={() => exportToCSV(bomData, "bom_data")}
-                    >
-                      Export
-                    </Button>
-                  </Box>
-                  <TableContainer>
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Raw ID</TableCell>
-                          <TableCell>Name</TableCell>
-                          <TableCell>Quantity</TableCell>
-                          <TableCell>Unit</TableCell>
-                          <TableCell>Cost</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {bomData &&
-                          bomData.map((item) => (
-                            <TableRow key={item._id || item.RawID}>
-                              <TableCell>{item.RawID}</TableCell>
-                              <TableCell>{item.Name || "N/A"}</TableCell>
-                              <TableCell>{item.Quantity || 0}</TableCell>
-                              <TableCell>{item.UnitMeasure || item.Unit || "N/A"}</TableCell>
-                              <TableCell>${item.Cost?.toLocaleString() || "0"}</TableCell>
-                            </TableRow>
-                          ))}
-                        {(!bomData || bomData.length === 0) && (
-                          <TableRow>
-                            <TableCell colSpan={5} align="center">
-                              No BOM data found
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                  {bomData && bomData.length > 0 && (
-                    <TablePagination
-                      component="div"
-                      count={bomData.length}
-                      rowsPerPage={10}
-                      page={0}
-                      onPageChange={() => {}}
-                      onRowsPerPageChange={() => {}}
-                    />
-                  )}
-                </Paper>
-
-                {/* Finished Goods Table */}
-                <Paper sx={{ p: 2 }}>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-                    <Typography variant="subtitle1">Finished Goods Inventory</Typography>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<Download />}
-                      onClick={() => exportToCSV(finishedGoods, "finished_goods")}
-                    >
-                      Export
-                    </Button>
-                  </Box>
-                  <TableContainer>
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>ID</TableCell>
-                          <TableCell>Name</TableCell>
-                          <TableCell>Category</TableCell>
-                          <TableCell>Price</TableCell>
-                          <TableCell>Stock</TableCell>
-                          <TableCell>Status</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {finishedGoods &&
-                          finishedGoods.map((item) => (
-                            <TableRow key={item._id || item.id}>
-                              <TableCell>{item.id}</TableCell>
-                              <TableCell>{item.name}</TableCell>
-                              <TableCell>
-                                {item.categoryName || (item.category && item.category.name) || "Uncategorized"}
-                              </TableCell>
-                              <TableCell>${item.price?.toLocaleString() || "0"}</TableCell>
-                              <TableCell>{item.stock || 0}</TableCell>
-                              <TableCell>
-                                <Chip
-                                  label={item.stock > 0 ? "In Stock" : "Out of Stock"}
-                                  color={item.stock > 0 ? "success" : "error"}
-                                  size="small"
-                                />
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        {(!finishedGoods || finishedGoods.length === 0) && (
-                          <TableRow>
-                            <TableCell colSpan={6} align="center">
-                              No finished goods found
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                  {finishedGoods && finishedGoods.length > 0 && (
-                    <TablePagination
-                      component="div"
-                      count={finishedGoods.length}
-                      rowsPerPage={10}
-                      page={0}
-                      onPageChange={() => {}}
-                      onRowsPerPageChange={() => {}}
-                    />
-                  )}
-                </Paper>
-              </Box>
-            )}
-
-            {/* Menu Analysis Tab */}
-            {activeTab === 4 && (
-              <Box sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                  Menu Analysis
-                </Typography>
-
-                {/* Menu Categories Chart */}
-                <Paper sx={{ p: 2, mb: 3 }}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Menu Categories
-                  </Typography>
-                  <CategoryDistributionChart data={categoryDistributionData} loading={finishedGoodsLoading} />
-                </Paper>
-
-                {/* Menu Categories Table */}
-                <Paper sx={{ p: 2, mb: 3 }}>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-                    <Typography variant="subtitle1">Menu Categories</Typography>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<Download />}
-                      onClick={() => exportToCSV(menuCategories?.categories || [], "menu_categories")}
-                    >
-                      Export
-                    </Button>
-                  </Box>
-                  <TableContainer>
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>ID</TableCell>
-                          <TableCell>Name</TableCell>
-                          <TableCell>Columns</TableCell>
-                          <TableCell>Small Text</TableCell>
-                          <TableCell>Order</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {menuCategories?.categories &&
-                          menuCategories.categories.map((category) => (
-                            <TableRow key={category._id || category.id}>
-                              <TableCell>{category.id}</TableCell>
-                              <TableCell>{category.name}</TableCell>
-                              <TableCell>{category.columns || 2}</TableCell>
-                              <TableCell>{category.smallText ? "Yes" : "No"}</TableCell>
-                              <TableCell>{category.order || 0}</TableCell>
-                            </TableRow>
-                          ))}
-                        {(!menuCategories?.categories || menuCategories.categories.length === 0) && (
-                          <TableRow>
-                            <TableCell colSpan={5} align="center">
-                              No menu categories found
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </Paper>
-
-                {/* Menu Items Table */}
-                <Paper sx={{ p: 2 }}>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-                    <Typography variant="subtitle1">Menu Items</Typography>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<Download />}
-                      onClick={() => exportToCSV(finishedGoods, "menu_items")}
-                    >
-                      Export
-                    </Button>
-                  </Box>
-                  <TableContainer>
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>ID</TableCell>
-                          <TableCell>Name</TableCell>
-                          <TableCell>Category</TableCell>
-                          <TableCell>Price</TableCell>
-                          <TableCell>Is Pizza</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {finishedGoods &&
-                          finishedGoods.map((item) => (
-                            <TableRow key={item._id || item.id}>
-                              <TableCell>{item.id}</TableCell>
-                              <TableCell>{item.name}</TableCell>
-                              <TableCell>
-                                {item.categoryName || (item.category && item.category.name) || "Uncategorized"}
-                              </TableCell>
-                              <TableCell>${item.price?.toLocaleString() || "0"}</TableCell>
-                              <TableCell>{item.isPizza ? "Yes" : "No"}</TableCell>
-                            </TableRow>
-                          ))}
-                        {(!finishedGoods || finishedGoods.length === 0) && (
-                          <TableRow>
-                            <TableCell colSpan={5} align="center">
-                              No menu items found
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                  {finishedGoods && finishedGoods.length > 0 && (
-                    <TablePagination
-                      component="div"
-                      count={finishedGoods.length}
-                      rowsPerPage={10}
-                      page={0}
-                      onPageChange={() => {}}
-                      onRowsPerPageChange={() => {}}
-                    />
-                  )}
-                </Paper>
-              </Box>
-            )}
-
-            {/* Banking Tab */}
-            {activeTab === 5 && (
-              <Box sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                  Banking Information
-                </Typography>
-
-                {/* Banks Status Chart */}
-                <Paper sx={{ p: 2, mb: 3 }}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Banks Status
-                  </Typography>
-                  <BankStatusChart data={bankStatusData} loading={banksLoading} />
-                </Paper>
-
-                {/* Banks Table */}
-                <Paper sx={{ p: 2 }}>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-                    <Typography variant="subtitle1">Bank Details</Typography>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<Download />}
-                      onClick={() => exportToCSV(banks, "banks")}
-                    >
-                      Export
-                    </Button>
-                  </Box>
-                  <TableContainer>
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Name</TableCell>
-                          <TableCell>Code</TableCell>
-                          <TableCell>Address</TableCell>
-                          <TableCell>Status</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {banks &&
-                          banks.map((bank) => (
-                            <TableRow key={bank._id || bank.id}>
-                              <TableCell>{bank.name}</TableCell>
-                              <TableCell>{bank.code}</TableCell>
-                              <TableCell>{bank.address || "N/A"}</TableCell>
-                              <TableCell>
-                                <Chip
-                                  label={bank.isActive ? "Active" : "Inactive"}
-                                  color={bank.isActive ? "success" : "error"}
-                                  size="small"
-                                />
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        {(!banks || banks.length === 0) && (
-                          <TableRow>
-                            <TableCell colSpan={4} align="center">
-                              No banks found
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                  {banks && banks.length > 0 && (
-                    <TablePagination
-                      component="div"
-                      count={banks.length}
-                      rowsPerPage={10}
-                      page={0}
-                      onPageChange={() => {}}
-                      onRowsPerPageChange={() => {}}
-                    />
-                  )}
-                </Paper>
-              </Box>
-            )}
-
-            {/* POS Config Tab */}
-            {activeTab === 6 && (
-              <Box sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                  POS Configuration
-                </Typography>
-
-                {/* POS Status Chart */}
-                <Paper sx={{ p: 2, mb: 3 }}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    POS Status Distribution
-                  </Typography>
-                  <PosStatusChart data={posStatusData} loading={posConfigLoading} />
-                </Paper>
-
-                {/* POS Config Table */}
-                <Paper sx={{ p: 2 }}>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-                    <Typography variant="subtitle1">POS Configuration Details</Typography>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<Download />}
-                      onClick={() => exportToCSV(posConfigs, "pos_configurations")}
-                    >
-                      Export
-                    </Button>
-                  </Box>
-                  <TableContainer>
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>POS ID</TableCell>
-                          <TableCell>Registration Number</TableCell>
-                          <TableCell>Authority Type</TableCell>
-                          <TableCell>Status</TableCell>
-                          <TableCell>Time Bound Start</TableCell>
-                          <TableCell>Time Bound End</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {posConfigs &&
-                          posConfigs.map((config) => (
-                            <TableRow key={config._id || config.PosID}>
-                              <TableCell>{config.PosID}</TableCell>
-                              <TableCell>{config.RegistrationNumber}</TableCell>
-                              <TableCell>{config.AuthorityType}</TableCell>
-                              <TableCell>
-                                <Chip
-                                  label={config.POSStatus}
-                                  color={
-                                    config.POSStatus === "Active" || config.POSStatus === "Online"
-                                      ? "success"
-                                      : config.POSStatus === "Inactive" || config.POSStatus === "Offline"
-                                        ? "error"
-                                        : "warning"
-                                  }
-                                  size="small"
-                                />
-                              </TableCell>
-                              <TableCell>
-                                {config.TimeBound?.Start
-                                  ? format(new Date(config.TimeBound.Start), "MMM dd, yyyy")
-                                  : "N/A"}
-                              </TableCell>
-                              <TableCell>
-                                {config.TimeBound?.End
-                                  ? format(new Date(config.TimeBound.End), "MMM dd, yyyy")
-                                  : "N/A"}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        {(!posConfigs || posConfigs.length === 0) && (
-                          <TableRow>
-                            <TableCell colSpan={6} align="center">
-                              No POS configurations found
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                  {posConfigs && posConfigs.length > 0 && (
-                    <TablePagination
-                      component="div"
-                      count={posConfigs.length}
-                      rowsPerPage={10}
-                      page={0}
-                      onPageChange={() => {}}
-                      onRowsPerPageChange={() => {}}
-                    />
-                  )}
-                </Paper>
-              </Box>
-            )}
-          </>
-        )}
+// Enhanced tooltip component
+const CustomTooltip = ({ active, payload, label, formatter, title }) => {
+  if (active && payload && payload.length) {
+    return (
+      <Paper
+        elevation={3}
+        sx={{
+          p: 2,
+          backgroundColor: "rgba(255, 255, 255, 0.95)",
+          border: "1px solid #eee",
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+          maxWidth: 300,
+        }}
+      >
+        <Typography variant="subtitle2" sx={{ color: "#2c3e50", mb: 1, fontWeight: 600 }}>
+          {title || label}
+        </Typography>
+        {payload.map((entry, index) => (
+          <Box
+            key={index}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              mb: 0.5,
+            }}
+          >
+            <Box
+              sx={{
+                width: 12,
+                height: 12,
+                borderRadius: "50%",
+                backgroundColor: entry.color,
+              }}
+            />
+            <Typography variant="body2" sx={{ color: "#2c3e50" }}>
+              {entry.name}: {formatter ? formatter(entry.value, entry.name) : entry.value}
+            </Typography>
+          </Box>
+        ))}
       </Paper>
-    </Container>
+    )
+  }
+  return null
+}
+
+// Enhanced chart components
+const EnhancedLineChart = ({ data, xKey, yKeys, title, subtitle, height = 300, formatter, actions }) => {
+  return (
+    <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions}>
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 10 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+          <XAxis
+            dataKey={xKey}
+            stroke="#2c3e50"
+            tick={{ fill: "#2c3e50" }}
+            tickLine={{ stroke: "#2c3e50" }}
+            axisLine={{ stroke: "#2c3e50" }}
+          />
+          <YAxis
+            stroke="#2c3e50"
+            tick={{ fill: "#2c3e50" }}
+            tickLine={{ stroke: "#2c3e50" }}
+            axisLine={{ stroke: "#2c3e50" }}
+          />
+          <RechartsTooltip
+            content={({ active, payload, label }) => (
+              <CustomTooltip
+                active={active}
+                payload={payload}
+                label={label}
+                formatter={formatter || ((value) => `$${value.toFixed(2)}`)}
+              />
+            )}
+          />
+          <Legend verticalAlign="bottom" height={36} iconType="circle" iconSize={10} />
+          {yKeys.map((key, index) => (
+            <Line
+              key={key}
+              type="monotone"
+              dataKey={key}
+              name={key}
+              stroke={Object.values(chartTheme.colors)[index % Object.keys(chartTheme.colors).length]}
+              strokeWidth={3}
+              dot={{ r: 4, strokeWidth: 2 }}
+              activeDot={{ r: 6, strokeWidth: 2 }}
+            />
+          ))}
+        </LineChart>
+      </ResponsiveContainer>
+    </ChartContainer>
+  )
+}
+
+const EnhancedAreaChart = ({
+  data,
+  xKey,
+  yKeys,
+  title,
+  subtitle,
+  height = 300,
+  formatter,
+  stacked = false,
+  actions,
+}) => {
+  return (
+    <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions}>
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 10 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+          <XAxis dataKey={xKey} stroke="#2c3e50" tick={{ fill: "#2c3e50" }} />
+          <YAxis stroke="#2c3e50" tick={{ fill: "#2c3e50" }} />
+          <RechartsTooltip
+            content={({ active, payload, label }) => (
+              <CustomTooltip
+                active={active}
+                payload={payload}
+                label={label}
+                formatter={formatter || ((value) => `$${value.toFixed(2)}`)}
+              />
+            )}
+          />
+          <Legend verticalAlign="bottom" height={36} iconType="circle" iconSize={10} />
+          {yKeys.map((key, index) => (
+            <Area
+              key={key}
+              type="monotone"
+              dataKey={key}
+              name={key}
+              stackId={stacked ? "1" : index}
+              stroke={Object.values(chartTheme.colors)[index % Object.keys(chartTheme.colors).length]}
+              fill={alpha(Object.values(chartTheme.colors)[index % Object.keys(chartTheme.colors).length], 0.5)}
+            />
+          ))}
+        </AreaChart>
+      </ResponsiveContainer>
+    </ChartContainer>
+  )
+}
+
+const EnhancedBarChart = ({
+  data,
+  xKey,
+  yKeys,
+  title,
+  subtitle,
+  height = 300,
+  formatter,
+  stacked = false,
+  actions,
+}) => {
+  return (
+    <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions}>
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 10 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+          <XAxis dataKey={xKey} stroke="#2c3e50" tick={{ fill: "#2c3e50" }} />
+          <YAxis stroke="#2c3e50" tick={{ fill: "#2c3e50" }} />
+          <RechartsTooltip
+            content={({ active, payload, label }) => (
+              <CustomTooltip
+                active={active}
+                payload={payload}
+                label={label}
+                formatter={formatter || ((value) => `$${value.toFixed(2)}`)}
+              />
+            )}
+          />
+          <Legend verticalAlign="bottom" height={36} iconType="circle" iconSize={10} />
+          {yKeys.map((key, index) => (
+            <Bar
+              key={key}
+              dataKey={key}
+              name={key}
+              stackId={stacked ? "1" : undefined}
+              fill={Object.values(chartTheme.colors)[index % Object.keys(chartTheme.colors).length]}
+              radius={[4, 4, 0, 0]}
+            />
+          ))}
+        </BarChart>
+      </ResponsiveContainer>
+    </ChartContainer>
+  )
+}
+
+const EnhancedPieChart = ({ data, dataKey, nameKey, title, subtitle, height = 300, formatter, actions }) => {
+  return (
+    <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions}>
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            data={data}
+            cx="50%"
+            cy="50%"
+            labelLine={false}
+            outerRadius={80}
+            innerRadius={0}
+            fill="#8884d8"
+            dataKey={dataKey}
+            nameKey={nameKey}
+            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+          >
+            {data.map((entry, index) => (
+              <Cell
+                key={`cell-${index}`}
+                fill={Object.values(chartTheme.colors)[index % Object.keys(chartTheme.colors).length]}
+              />
+            ))}
+          </Pie>
+          <RechartsTooltip
+            content={({ active, payload }) => (
+              <CustomTooltip active={active} payload={payload} formatter={formatter || ((value) => `${value} items`)} />
+            )}
+          />
+          <Legend
+            verticalAlign="bottom"
+            height={36}
+            iconType="circle"
+            iconSize={10}
+            layout="horizontal"
+            align="center"
+          />
+        </PieChart>
+      </ResponsiveContainer>
+    </ChartContainer>
+  )
+}
+
+const EnhancedDonutChart = ({ data, dataKey, nameKey, title, subtitle, height = 300, formatter, actions }) => {
+  return (
+    <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions}>
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            data={data}
+            cx="50%"
+            cy="50%"
+            labelLine={false}
+            outerRadius={80}
+            innerRadius={40}
+            fill="#8884d8"
+            dataKey={dataKey}
+            nameKey={nameKey}
+            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+          >
+            {data.map((entry, index) => (
+              <Cell
+                key={`cell-${index}`}
+                fill={Object.values(chartTheme.colors)[index % Object.keys(chartTheme.colors).length]}
+              />
+            ))}
+          </Pie>
+          <RechartsTooltip
+            content={({ active, payload }) => (
+              <CustomTooltip active={active} payload={payload} formatter={formatter || ((value) => `${value} items`)} />
+            )}
+          />
+          <Legend
+            verticalAlign="bottom"
+            height={36}
+            iconType="circle"
+            iconSize={10}
+            layout="horizontal"
+            align="center"
+          />
+        </PieChart>
+      </ResponsiveContainer>
+    </ChartContainer>
+  )
+}
+
+// Enhanced radar chart component
+const EnhancedRadarChart = ({ data, dataKey, title, subtitle, height = 300, formatter, actions }) => {
+  return (
+    <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions}>
+      <ResponsiveContainer width="100%" height="100%">
+        <RadarChart cx="50%" cy="50%" outerRadius={80} data={data}>
+          <PolarGrid stroke="#e0e0e0" />
+          <PolarAngleAxis dataKey="name" tick={{ fill: "#2c3e50" }} />
+          <PolarRadiusAxis angle={30} domain={[0, "auto"]} />
+          <Radar
+            name={dataKey}
+            dataKey="value"
+            stroke={chartTheme.colors.primary}
+            fill={chartTheme.colors.primary}
+            fillOpacity={0.6}
+          />
+          <RechartsTooltip
+            content={({ active, payload }) => (
+              <CustomTooltip active={active} payload={payload} formatter={formatter || ((value) => value)} />
+            )}
+          />
+          <Legend verticalAlign="bottom" height={36} iconType="circle" iconSize={10} />
+        </RadarChart>
+      </ResponsiveContainer>
+    </ChartContainer>
+  )
+}
+
+// Enhanced table component
+const EnhancedTable = ({ title, subtitle, columns, data, height = 400, actions, pagination = false, sx = {} }) => {
+  return (
+    <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions} sx={sx}>
+      <TableContainer sx={{ maxHeight: height, overflow: "auto" }}>
+        <Table stickyHeader>
+          <TableHead>
+            <TableRow>
+              {columns.map((column) => (
+                <TableCell
+                  key={column.key}
+                  align={column.align || "left"}
+                  sx={{
+                    backgroundColor: alpha("#f15a22", 0.05),
+                    color: "#2c3e50",
+                    fontWeight: 600,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {column.label}
+                </TableCell>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {data.map((row, index) => (
+              <TableRow
+                key={index}
+                sx={{
+                  "&:nth-of-type(odd)": {
+                    backgroundColor: alpha("#f8f9fa", 0.5),
+                  },
+                  "&:hover": { backgroundColor: alpha("#f15a22", 0.05) },
+                  transition: "background-color 0.2s",
+                }}
+              >
+                {columns.map((column) => (
+                  <TableCell
+                    key={column.key}
+                    align={column.align || "left"}
+                    sx={{
+                      color: "#2c3e50",
+                      whiteSpace: column.nowrap ? "nowrap" : "normal",
+                      ...(column.sx || {}),
+                    }}
+                  >
+                    {column.render
+                      ? column.render(row[column.key], row)
+                      : (column.key === "Name" || column.key === "vendorName" || column.key === "name") &&
+                          row[column.key] === undefined
+                        ? row.name || row.Name || row.vendorName || column.defaultValue || "N/A"
+                        : row[column.key] === undefined || isNaN(row[column.key])
+                          ? column.defaultValue || "N/A"
+                          : row[column.key]}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+      {pagination && (
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "flex-end",
+            alignItems: "center",
+            p: 2,
+            borderTop: "1px solid rgba(0, 0, 0, 0.05)",
+          }}
+        >
+          <Typography variant="body2" sx={{ mr: 2 }}>
+            Showing {Math.min(data.length, 10)} of {data.length} entries
+          </Typography>
+          <Button size="small" variant="outlined" disabled>
+            Previous
+          </Button>
+          <Box sx={{ mx: 1 }}>
+            <Chip label="1" color="primary" />
+          </Box>
+          <Button size="small" variant="outlined" disabled={data.length <= 10}>
+            Next
+          </Button>
+        </Box>
+      )}
+    </ChartContainer>
+  )
+}
+
+// Enhanced scatter chart component
+const EnhancedScatterChart = ({ data, xKey, yKey, zKey, title, subtitle, height = 300, formatter, actions }) => {
+  return (
+    <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions}>
+      <ResponsiveContainer width="100%" height="100%">
+        <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+          <XAxis type="number" dataKey={xKey} name={xKey} stroke="#2c3e50" tick={{ fill: "#2c3e50" }} />
+          <YAxis type="number" dataKey={yKey} name={yKey} stroke="#2c3e50" tick={{ fill: "#2c3e50" }} />
+          <ZAxis type="number" dataKey={zKey} range={[40, 160]} name={zKey} />
+          <RechartsTooltip
+            content={({ active, payload }) => (
+              <CustomTooltip active={active} payload={payload} formatter={formatter || ((value) => value.toFixed(2))} />
+            )}
+          />
+          <Legend verticalAlign="bottom" height={36} iconType="circle" iconSize={10} />
+          <Scatter name={title} data={data} fill={chartTheme.colors.primary} />
+        </ScatterChart>
+      </ResponsiveContainer>
+    </ChartContainer>
+  )
+}
+
+// Enhanced treemap component
+const EnhancedTreemap = ({ data, dataKey, nameKey, title, subtitle, height = 300, formatter, actions }) => {
+  return (
+    <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions}>
+      <ResponsiveContainer width="100%" height="100%">
+        <Treemap
+          data={data}
+          dataKey={dataKey}
+          ratio={4 / 3}
+          stroke="#fff"
+          fill="#8884d8"
+          content={({ root, depth, x, y, width, height, index, payload, colors, rank, name }) => {
+            return (
+              <g>
+                <rect
+                  x={x}
+                  y={y}
+                  width={width}
+                  height={height}
+                  style={{
+                    fill: Object.values(chartTheme.colors)[index % Object.keys(chartTheme.colors).length],
+                    stroke: "#fff",
+                    strokeWidth: 2 / (depth + 1e-10),
+                    strokeOpacity: 1 / (depth + 1e-10),
+                  }}
+                />
+                {depth === 1 && (
+                  <text x={x + width / 2} y={y + height / 2 + 7} textAnchor="middle" fill="#fff" fontSize={14}>
+                    {name}
+                  </text>
+                )}
+              </g>
+            )
+          }}
+        >
+          <RechartsTooltip
+            content={({ active, payload }) => (
+              <CustomTooltip
+                active={active}
+                payload={payload}
+                formatter={formatter || ((value) => `${value.toFixed(2)}`)}
+              />
+            )}
+          />
+        </Treemap>
+      </ResponsiveContainer>
+    </ChartContainer>
+  )
+}
+
+// Enhanced composed chart component
+const EnhancedComposedChart = ({
+  data,
+  xKey,
+  barKeys,
+  lineKeys,
+  areaKeys,
+  title,
+  subtitle,
+  height = 300,
+  formatter,
+  actions,
+}) => {
+  return (
+    <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions}>
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart data={data} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+          <XAxis dataKey={xKey} stroke="#2c3e50" tick={{ fill: "#2c3e50" }} />
+          <YAxis stroke="#2c3e50" tick={{ fill: "#2c3e50" }} />
+          <RechartsTooltip
+            content={({ active, payload, label }) => (
+              <CustomTooltip
+                active={active}
+                payload={payload}
+                label={label}
+                formatter={formatter || ((value) => `$${value.toFixed(2)}`)}
+              />
+            )}
+          />
+          <Legend verticalAlign="bottom" height={36} iconType="circle" iconSize={10} />
+          {barKeys &&
+            barKeys.map((key, index) => (
+              <Bar
+                key={key}
+                dataKey={key}
+                name={key}
+                fill={Object.values(chartTheme.colors)[index % Object.keys(chartTheme.colors).length]}
+                radius={[4, 4, 0, 0]}
+              />
+            ))}
+          {lineKeys &&
+            lineKeys.map((key, index) => (
+              <Line
+                key={key}
+                type="monotone"
+                dataKey={key}
+                name={key}
+                stroke={
+                  Object.values(chartTheme.colors)[
+                    (index + (barKeys?.length || 0)) % Object.keys(chartTheme.colors).length
+                  ]
+                }
+                strokeWidth={3}
+                dot={{ r: 4, strokeWidth: 2 }}
+                activeDot={{ r: 6, strokeWidth: 2 }}
+              />
+            ))}
+          {areaKeys &&
+            areaKeys.map((key, index) => (
+              <Area
+                key={key}
+                type="monotone"
+                dataKey={key}
+                name={key}
+                stroke={
+                  Object.values(chartTheme.colors)[
+                    (index + (barKeys?.length || 0) + (lineKeys?.length || 0)) % Object.keys(chartTheme.colors).length
+                  ]
+                }
+                fill={alpha(
+                  Object.values(chartTheme.colors)[
+                    (index + (barKeys?.length || 0) + (lineKeys?.length || 0)) % Object.keys(chartTheme.colors).length
+                  ],
+                  0.5,
+                )}
+              />
+            ))}
+        </ComposedChart>
+      </ResponsiveContainer>
+    </ChartContainer>
+  )
+}
+
+// Enhanced loading state
+const LoadingState = () => (
+  <Box
+    sx={{
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+      alignItems: "center",
+      p: 6,
+      minHeight: "500px",
+      bgcolor: "background.default",
+      borderRadius: 2,
+    }}
+  >
+    <CircularProgress size={60} thickness={4} sx={{ color: "#f15a22" }} />
+    <Typography variant="h6" sx={{ mt: 3, color: "#2c3e50", fontWeight: 600 }}>
+      Loading Analytics Dashboard
+    </Typography>
+    <Typography variant="body1" sx={{ mt: 1, color: "#7f8c8d", textAlign: "center", maxWidth: 400 }}>
+      We're gathering all your business insights and preparing your personalized analytics dashboard
+    </Typography>
+    <Box sx={{ width: "50%", mt: 4 }}>
+      <LinearProgress sx={{ height: 8, borderRadius: 4 }} />
+    </Box>
+  </Box>
+)
+
+// Enhanced error state
+const ErrorState = ({ message, onRetry }) => (
+  <Box
+    sx={{
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+      alignItems: "center",
+      p: 6,
+      minHeight: "400px",
+      bgcolor: "background.default",
+      borderRadius: 2,
+    }}
+  >
+    <Error sx={{ fontSize: 60, color: "#e74c3c", mb: 2 }} />
+    <Typography variant="h5" sx={{ color: "#2c3e50", fontWeight: 600, mb: 2 }}>
+      Data Loading Error
+    </Typography>
+    <Typography variant="body1" sx={{ color: "#7f8c8d", textAlign: "center", maxWidth: 500, mb: 4 }}>
+      {message ||
+        "We encountered an error while loading your analytics data. Please try again later or contact support if the problem persists."}
+    </Typography>
+    {onRetry && (
+      <Button variant="contained" color="primary" startIcon={<Refresh />} onClick={onRetry}>
+        Retry
+      </Button>
+    )}
+  </Box>
+)
+
+// Enhanced empty state
+const EmptyState = ({ message, icon, actionText, onAction }) => (
+  <Box
+    sx={{
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+      alignItems: "center",
+      p: 4,
+      minHeight: "200px",
+      bgcolor: alpha("#f8f9fa", 0.5),
+      borderRadius: 2,
+    }}
+  >
+    {icon || <Info sx={{ fontSize: 40, color: "#3498db", mb: 2 }} />}
+    <Typography variant="body1" sx={{ color: "#2c3e50", mb: 1, fontWeight: 500, textAlign: "center" }}>
+      {message}
+    </Typography>
+    <Typography variant="body2" sx={{ color: "#7f8c8d", textAlign: "center" }}>
+      No data available to display
+    </Typography>
+    {actionText && onAction && (
+      <Button variant="outlined" color="primary" size="small" onClick={onAction} sx={{ mt: 2 }}>
+        {actionText}
+      </Button>
+    )}
+  </Box>
+)
+
+// Enhanced section header
+const SectionHeader = ({ title, subtitle, icon, actions }) => (
+  <Box
+    sx={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      mb: 4,
+      "& .MuiSvgIcon-root": {
+        color: "#f15a22",
+        mr: 1.5,
+        fontSize: 28,
+      },
+    }}
+  >
+    <Box sx={{ display: "flex", alignItems: "center" }}>
+      {icon}
+      <Box>
+        <Typography variant="h5" sx={{ color: "#2c3e50", fontWeight: 700 }}>
+          {title}
+        </Typography>
+        {subtitle && (
+          <Typography variant="body1" sx={{ color: "#7f8c8d", mt: 0.5 }}>
+            {subtitle}
+          </Typography>
+        )}
+      </Box>
+    </Box>
+    {actions && <Box sx={{ display: "flex", gap: 1 }}>{actions}</Box>}
+  </Box>
+)
+
+// Enhanced KPI indicator component
+const KPIIndicator = ({ title, value, target, unit = "", status = "neutral", icon }) => {
+  const theme = useTheme()
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "success":
+        return theme.palette.success.main
+      case "warning":
+        return theme.palette.warning.main
+      case "error":
+        return theme.palette.error.main
+      default:
+        return theme.palette.info.main
+    }
+  }
+
+  const statusColor = getStatusColor(status)
+  const percentage = target ? Math.round((value / target) * 100) : null
+
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        p: 2,
+        borderRadius: 2,
+        border: `1px solid ${alpha(statusColor, 0.3)}`,
+        backgroundColor: alpha(statusColor, 0.05),
+      }}
+    >
+      {icon && (
+        <Box
+          sx={{
+            mr: 2,
+            backgroundColor: alpha(statusColor, 0.1),
+            borderRadius: "50%",
+            p: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            "& .MuiSvgIcon-root": {
+              color: statusColor,
+            },
+          }}
+        >
+          {icon}
+        </Box>
+      )}
+      <Box sx={{ flex: 1 }}>
+        <Typography variant="subtitle2" sx={{ color: "#7f8c8d", mb: 0.5 }}>
+          {title}
+        </Typography>
+        <Typography variant="h6" sx={{ color: "#2c3e50", fontWeight: 600 }}>
+          {value}
+          {unit}
+        </Typography>
+        {target && (
+          <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
+            <Box sx={{ flex: 1, mr: 1 }}>
+              <LinearProgress
+                variant="determinate"
+                value={Math.min(percentage, 100)}
+                sx={{
+                  height: 6,
+                  borderRadius: 3,
+                  backgroundColor: alpha(statusColor, 0.2),
+                  "& .MuiLinearProgress-bar": {
+                    backgroundColor: statusColor,
+                  },
+                }}
+              />
+            </Box>
+            <Typography variant="body2" sx={{ color: statusColor, fontWeight: 500 }}>
+              {percentage}%
+            </Typography>
+          </Box>
+        )}
+      </Box>
+    </Box>
+  )
+}
+
+// Enhanced dashboard header with date range and actions
+const DashboardHeader = ({ title, subtitle, dateRange, onDateRangeChange, actions }) => {
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: { xs: "column", md: "row" },
+        justifyContent: "space-between",
+        alignItems: { xs: "flex-start", md: "center" },
+        mb: 4,
+        pb: 3,
+        borderBottom: "1px solid rgba(0, 0, 0, 0.05)",
+      }}
+    >
+      <Box sx={{ mb: { xs: 2, md: 0 } }}>
+        <Typography variant="h4" sx={{ color: "#2c3e50", fontWeight: 700 }}>
+          {title}
+        </Typography>
+        {subtitle && (
+          <Typography variant="body1" sx={{ color: "#7f8c8d", mt: 0.5 }}>
+            {subtitle}
+          </Typography>
+        )}
+      </Box>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: { xs: "column", sm: "row" },
+          alignItems: { xs: "flex-start", sm: "center" },
+          gap: 2,
+        }}
+      >
+        {dateRange && (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              padding: 1,
+              px: 2,
+              border: "1px solid rgba(0, 0, 0, 0.1)",
+              borderRadius: 2,
+              backgroundColor: "background.paper",
+            }}
+          >
+            <CalendarMonth sx={{ color: "#7f8c8d", mr: 1 }} />
+            <Typography variant="body2" sx={{ color: "#2c3e50", fontWeight: 500 }}>
+              {dateRange}
+            </Typography>
+            <IconButton size="small" sx={{ ml: 1 }} onClick={onDateRangeChange}>
+              <FilterList fontSize="small" />
+            </IconButton>
+          </Box>
+        )}
+        {actions && <Box sx={{ display: "flex", gap: 1 }}>{actions}</Box>}
+      </Box>
+    </Box>
+  )
+}
+
+// Enhanced status badge component
+const StatusBadge = ({ status, text }) => {
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "success":
+      case "active":
+      case "online":
+      case "completed":
+        return "success"
+      case "warning":
+      case "pending":
+      case "in-progress":
+        return "warning"
+      case "error":
+      case "inactive":
+      case "offline":
+      case "failed":
+        return "error"
+      default:
+        return "info"
+    }
+  }
+
+  const color = getStatusColor(status)
+
+  return (
+    <Chip
+      size="small"
+      color={color}
+      label={text || status}
+      sx={{
+        fontWeight: 500,
+        textTransform: "capitalize",
+      }}
+    />
+  )
+}
+
+// Enhanced comparison card component
+const ComparisonCard = ({ title, current, previous, unit = "", percentChange, icon, color = "primary" }) => {
+  const theme = useTheme()
+  const isPositive = percentChange > 0
+
+  return (
+    <Card sx={{ p: 3 }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          mb: 2,
+        }}
+      >
+        <Typography variant="subtitle2" sx={{ color: "#7f8c8d" }}>
+          {title}
+        </Typography>
+        {icon && (
+          <Box
+            sx={{
+              backgroundColor: alpha(theme.palette[color].main, 0.1),
+              borderRadius: "50%",
+              p: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              "& .MuiSvgIcon-root": {
+                color: theme.palette[color].main,
+              },
+            }}
+          >
+            {icon}
+          </Box>
+        )}
+      </Box>
+      <Typography variant="h4" sx={{ color: "#2c3e50", fontWeight: 700, mb: 1 }}>
+        {current}
+        {unit}
+      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center" }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: isPositive ? theme.palette.success.main : theme.palette.error.main,
+            display: "flex",
+            alignItems: "center",
+            fontWeight: 500,
+          }}
+        >
+          {isPositive ? "+" : ""}
+          {percentChange}%
+          {isPositive ? (
+            <ArrowUpward fontSize="small" sx={{ ml: 0.5 }} />
+          ) : (
+            <ArrowDownward fontSize="small" sx={{ ml: 0.5 }} />
+          )}
+        </Typography>
+        <Typography variant="body2" sx={{ color: "#7f8c8d", ml: 1 }}>
+          vs previous ({previous}
+          {unit})
+        </Typography>
+      </Box>
+    </Card>
   )
 }
 
 const ReportAnalytics = () => {
+  const theme = useTheme()
+  const [value, setValue] = useState(0)
+
+  const handleChange = (event, newValue) => {
+    setValue(newValue)
+  }
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [dateRange, setDateRange] = useState("Last 30 days")
+
+  // State for different data types
+  const [transactions, setTransactions] = useState([])
+  const [posConfigs, setPosConfigs] = useState([])
+  const [banks, setBanks] = useState([])
+  const [purchaseOrders, setPurchaseOrders] = useState([])
+  const [vendors, setVendors] = useState([])
+  const [menuItems, setMenuItems] = useState([])
+  const [finishedGoods, setFinishedGoods] = useState([])
+  const [bomData, setBomData] = useState([])
+  const [menuCategories, setMenuCategories] = useState([])
+
+  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "https://api.example.com"
+
+  useEffect(() => {
+    const fetchAllData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+
+        try {
+          // Fetch all data in parallel
+          const [
+            transactionsResponse,
+            posConfigsResponse,
+            banksResponse,
+            purchaseOrdersResponse,
+            vendorsResponse,
+            menuCategoriesResponse,
+            finishedGoodsResponse,
+            bomDataResponse,
+          ] = await Promise.all([
+            fetch("/api/transactions"),
+            fetch("/api/posconfig"),
+            fetch("/api/banks"),
+            fetch("/api/purchase-orders"),
+            fetch("/api/vendors"),
+            fetch("/api/menu/categories"),
+            fetch("/api/menu/finishedgoods"),
+            fetch("/api/menu/bom"),
+          ])
+
+          // Process all responses
+          const transactions = await transactionsResponse.json()
+          const posConfigs = await posConfigsResponse.json()
+          const banks = await banksResponse.json()
+          const purchaseOrders = await purchaseOrdersResponse.json()
+          const vendors = await vendorsResponse.json()
+
+          // For menu categories, check if the response has a categories property
+          const menuCategoriesData = await menuCategoriesResponse.json()
+          const menuCategories = menuCategoriesData.categories || menuCategoriesData
+
+          const finishedGoods = await finishedGoodsResponse.json()
+          const bomData = await bomDataResponse.json()
+
+          // Set state with fetched data
+          setTransactions(transactions)
+          setPosConfigs(posConfigs)
+          setBanks(banks)
+          setPurchaseOrders(purchaseOrders)
+          setVendors(vendors)
+          setMenuCategories(menuCategories)
+          setFinishedGoods(finishedGoods)
+          setBomData(bomData)
+
+          setLoading(false)
+        } catch (error) {
+          console.error("Error fetching data:", error)
+          setError("Failed to fetch data from the server. Please try again later.")
+          setLoading(false)
+        }
+      } catch (err) {
+        console.error("Error fetching data:", err)
+        setError(err.message || "An error occurred while fetching data")
+        setLoading(false)
+      }
+    }
+
+    fetchAllData()
+  }, [])
+
+  const handleRetry = () => {
+    setLoading(true)
+    setError(null)
+
+    // Fetch all data again
+    const fetchAllData = async () => {
+      try {
+        // Fetch all data in parallel
+        const [
+          transactionsResponse,
+          posConfigsResponse,
+          banksResponse,
+          purchaseOrdersResponse,
+          vendorsResponse,
+          menuCategoriesResponse,
+          finishedGoodsResponse,
+          bomDataResponse,
+        ] = await Promise.all([
+          fetch("/api/transactions"),
+          fetch("/api/posconfig"),
+          fetch("/api/banks"),
+          fetch("/api/purchase-orders"),
+          fetch("/api/vendors"),
+          fetch("/api/menu/categories"),
+          fetch("/api/menu/finishedgoods"),
+          fetch("/api/menu/bom"),
+        ])
+
+        // Process all responses
+        const transactions = await transactionsResponse.json()
+        const posConfigs = await posConfigsResponse.json()
+        const banks = await banksResponse.json()
+        const purchaseOrders = await purchaseOrdersResponse.json()
+        const vendors = await vendorsResponse.json()
+
+        // For menu categories, check if the response has a categories property
+        const menuCategoriesData = await menuCategoriesResponse.json()
+        const menuCategories = menuCategoriesData.categories || menuCategoriesData
+
+        const finishedGoods = await finishedGoodsResponse.json()
+        const bomData = await bomDataResponse.json()
+
+        // Set state with fetched data
+        setTransactions(transactions)
+        setPosConfigs(posConfigs)
+        setBanks(banks)
+        setPurchaseOrders(purchaseOrders)
+        setVendors(vendors)
+        setMenuCategories(menuCategories)
+        setFinishedGoods(finishedGoods)
+        setBomData(bomData)
+
+        setLoading(false)
+      } catch (error) {
+        console.error("Error fetching data:", error)
+        setError("Failed to fetch data from the server. Please try again later.")
+        setLoading(false)
+      }
+    }
+
+    fetchAllData()
+  }
+
+  // Process transaction data for analytics
+  const processTransactionData = () => {
+    if (!transactions || transactions.length === 0) {
+      return {
+        dailyData: [],
+        paymentMethodData: [],
+        totalSales: 0,
+        avgTransactionValue: 0,
+        totalItems: 0,
+        itemsPerTransaction: 0,
+        salesByHour: [],
+        topSellingProducts: [],
+        salesGrowth: 0,
+      }
+    }
+
+    // Group transactions by date
+    const groupedByDate = transactions.reduce((acc, transaction) => {
+      const date = new Date(transaction.date).toLocaleDateString()
+      if (!acc[date]) {
+        acc[date] = {
+          count: 0,
+          total: 0,
+          items: 0,
+        }
+      }
+      acc[date].count += 1
+      acc[date].total += transaction.total
+      acc[date].items += transaction.items.length
+      return acc
+    }, {})
+
+    // Create daily data for charts
+    const dailyData = Object.keys(groupedByDate)
+      .map((date) => ({
+        date,
+        count: groupedByDate[date].count,
+        total: groupedByDate[date].total,
+        items: groupedByDate[date].items,
+      }))
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+
+    // Group by payment method
+    const paymentMethods = transactions.reduce((acc, transaction) => {
+      const { paymentMethod } = transaction
+      if (!acc[paymentMethod]) {
+        acc[paymentMethod] = {
+          count: 0,
+          total: 0,
+        }
+      }
+      acc[paymentMethod].count += 1
+      acc[paymentMethod].total += transaction.total
+      return acc
+    }, {})
+
+    const paymentMethodData = Object.keys(paymentMethods).map((method) => ({
+      name: method,
+      count: paymentMethods[method].count,
+      total: paymentMethods[method].total,
+    }))
+
+    // Calculate total sales
+    const totalSales = transactions.reduce((sum, t) => sum + t.total, 0)
+
+    // Calculate total items sold
+    const totalItems = transactions.reduce((sum, t) => {
+      return sum + t.items.reduce((itemSum, item) => itemSum + item.itemQuantity, 0)
+    }, 0)
+
+    // Calculate average transaction value
+    const avgTransactionValue = totalSales / transactions.length
+
+    // Calculate average items per transaction
+    const itemsPerTransaction = totalItems / transactions.length
+
+    // Group transactions by hour
+    const salesByHour = Array(24)
+      .fill(0)
+      .map((_, i) => ({
+        hour: i,
+        sales: 0,
+        count: 0,
+      }))
+
+    transactions.forEach((transaction) => {
+      const hour = new Date(transaction.date).getHours()
+      salesByHour[hour].sales += transaction.total
+      salesByHour[hour].count += 1
+    })
+
+    // Find top selling products
+    const productSales = {}
+    transactions.forEach((transaction) => {
+      transaction.items.forEach((item) => {
+        if (!productSales[item.itemName]) {
+          productSales[item.itemName] = {
+            name: item.itemName || "Unnamed Product",
+            quantity: 0,
+            revenue: 0,
+          }
+        }
+        productSales[item.itemName].quantity += item.itemQuantity || 0
+        productSales[item.itemName].revenue += (item.itemPrice || 0) * (item.itemQuantity || 0)
+      })
+    })
+
+    const topSellingProducts = Object.values(productSales)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 10)
+      .map((product) => ({
+        ...product,
+        // Ensure revenue is never NaN
+        revenue: isNaN(product.revenue) ? 0 : product.revenue,
+        // Ensure quantity is never NaN
+        quantity: isNaN(product.quantity) ? 0 : product.quantity,
+      }))
+
+    // Calculate sales growth (comparing first half to second half of the period)
+    const sortedTransactions = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date))
+    const midpoint = Math.floor(sortedTransactions.length / 2)
+    const firstHalfSales = sortedTransactions.slice(0, midpoint).reduce((sum, t) => sum + t.total, 0)
+    const secondHalfSales = sortedTransactions.slice(midpoint).reduce((sum, t) => sum + t.total, 0)
+    const salesGrowth = firstHalfSales > 0 ? ((secondHalfSales - firstHalfSales) / firstHalfSales) * 100 : 0
+
+    return {
+      dailyData,
+      paymentMethodData,
+      totalSales,
+      avgTransactionValue,
+      totalItems,
+      itemsPerTransaction,
+      salesByHour,
+      topSellingProducts,
+      salesGrowth,
+    }
+  }
+
+  // Process POS data for analytics
+  const processPOSData = () => {
+    if (!posConfigs || posConfigs.length === 0) {
+      return {
+        statusSummary: { total: 0, online: 0, offline: 0 },
+        authorityTypeCounts: [],
+        locationData: [],
+        activityTimeline: [],
+      }
+    }
+
+    // POS machine status summary
+    const statusSummary = {
+      total: posConfigs.length,
+      online: posConfigs.filter((pos) => pos.POSStatus === "Online").length,
+      offline: posConfigs.filter((pos) => pos.POSStatus === "Offline").length,
+    }
+
+    // Group by authority type
+    const authorityTypes = posConfigs.reduce((acc, pos) => {
+      if (!acc[pos.AuthorityType]) {
+        acc[pos.AuthorityType] = {
+          count: 0,
+          online: 0,
+          offline: 0,
+        }
+      }
+      acc[pos.AuthorityType].count += 1
+      if (pos.POSStatus === "Online") {
+        acc[pos.AuthorityType].online += 1
+      } else {
+        acc[pos.AuthorityType].offline += 1
+      }
+      return acc
+    }, {})
+
+    const authorityTypeCounts = Object.keys(authorityTypes).map((type) => ({
+      name: type,
+      count: authorityTypes[type].count,
+      online: authorityTypes[type].online,
+      offline: authorityTypes[type].offline,
+    }))
+
+    // Group by location
+    const locations = posConfigs.reduce((acc, pos) => {
+      const location = pos.Location || "Main Store" // Default location name
+      if (!acc[location]) {
+        acc[location] = {
+          count: 0,
+          online: 0,
+          offline: 0,
+        }
+      }
+      acc[location].count += 1
+      if (pos.POSStatus === "Online") {
+        acc[location].online += 1
+      } else {
+        acc[location].offline += 1
+      }
+      return acc
+    }, {})
+
+    // Create locationData from locations
+    const locationData = Object.keys(locations).map((location) => ({
+      name: location,
+      count: locations[location].count,
+      online: locations[location].online,
+      offline: locations[location].offline,
+    }))
+
+    // Create activity timeline with proper date formatting
+    const activityTimeline = posConfigs
+      .map((pos) => {
+        // Create a valid date or use current date as fallback
+        let formattedDate = new Date()
+        try {
+          const date = new Date(pos.LastActive)
+          formattedDate = isNaN(date.getTime()) ? new Date() : date
+        } catch (e) {
+          console.error("Error parsing date:", pos.LastActive)
+        }
+
+        return {
+          id: pos.PosID || `Terminal-${Math.floor(Math.random() * 10000)}`,
+          date: formattedDate,
+          status: pos.POSStatus || "Unknown",
+        }
+      })
+      .sort((a, b) => b.date - a.date)
+      .slice(0, 10)
+
+    return {
+      statusSummary,
+      authorityTypeCounts,
+      locationData,
+      activityTimeline,
+    }
+  }
+
+  // Process bank data for analytics
+  const processBankData = () => {
+    if (!banks || banks.length === 0) {
+      return {
+        activeBanks: 0,
+        inactiveBanks: 0,
+        bankStatusData: [],
+        creationTimeline: [],
+        banksByCity: [],
+      }
+    }
+
+    // Count active and inactive banks
+    const activeBanks = banks.filter((bank) => bank.isActive).length
+    const inactiveBanks = banks.length - activeBanks
+
+    // Bank status data for pie chart
+    const bankStatusData = [
+      { name: "Active", value: activeBanks },
+      { name: "Inactive", value: inactiveBanks },
+    ]
+
+    // Group banks by creation month for timeline
+    const banksByMonth = banks.reduce((acc, bank) => {
+      const date = new Date(bank.createdAt)
+      const monthYear = `${date.getMonth() + 1}/${date.getFullYear()}`
+
+      if (!acc[monthYear]) {
+        acc[monthYear] = {
+          monthYear,
+          count: 0,
+          active: 0,
+          inactive: 0,
+        }
+      }
+
+      acc[monthYear].count += 1
+      if (bank.isActive) {
+        acc[monthYear].active += 1
+      } else {
+        acc[monthYear].inactive += 1
+      }
+
+      return acc
+    }, {})
+
+    const creationTimeline = Object.values(banksByMonth).sort((a, b) => {
+      const [aMonth, aYear] = a.monthYear.split("/")
+      const [bMonth, bYear] = b.monthYear.split("/")
+      return new Date(aYear, aMonth - 1) - new Date(bYear, bMonth - 1)
+    })
+
+    // Group banks by city
+    const cityCounts = banks.reduce((acc, bank) => {
+      const city = bank.city || "Regional Branch" // Default city name
+      if (!acc[city]) {
+        acc[city] = {
+          count: 0,
+          active: 0,
+          inactive: 0,
+        }
+      }
+      acc[city].count += 1
+      if (bank.isActive) {
+        acc[city].active += 1
+      } else {
+        acc[city].inactive += 1
+      }
+      return acc
+    }, {})
+
+    const banksByCity = Object.keys(cityCounts).map((city) => ({
+      name: city,
+      count: cityCounts[city].count,
+      active: cityCounts[city].active,
+      inactive: cityCounts[city].inactive,
+    }))
+
+    return {
+      activeBanks,
+      inactiveBanks,
+      bankStatusData,
+      creationTimeline,
+      banksByCity,
+    }
+  }
+
+  // Process purchase order data for analytics
+  const processPurchaseOrderData = () => {
+    if (!purchaseOrders || purchaseOrders.length === 0) {
+      return {
+        totalOrders: 0,
+        totalAmount: 0,
+        averageOrderValue: 0,
+        statusCounts: [],
+        confirmationCounts: [],
+        topVendors: [],
+        orderTimeline: [],
+        ordersByPaymentTerms: [],
+      }
+    }
+
+    // Calculate basic metrics
+    const totalOrders = purchaseOrders.length
+    const totalAmount = purchaseOrders.reduce((sum, po) => sum + po.totalAmount, 0)
+    const averageOrderValue = totalAmount / totalOrders
+
+    // Count orders by status
+    const statusCounts = purchaseOrders.reduce((acc, po) => {
+      const status = po.status || "Unknown"
+      if (!acc[status]) {
+        acc[status] = 0
+      }
+      acc[status] += 1
+      return acc
+    }, {})
+
+    const statusData = Object.keys(statusCounts).map((status) => ({
+      name: status,
+      value: statusCounts[status],
+    }))
+
+    // Count orders by confirmation status
+    const confirmationCounts = purchaseOrders.reduce((acc, po) => {
+      const confirmation = po.confirmation || "Unknown"
+      if (!acc[confirmation]) {
+        acc[confirmation] = 0
+      }
+      acc[confirmation] += 1
+      return acc
+    }, {})
+
+    const confirmationData = Object.keys(confirmationCounts).map((confirmation) => ({
+      name: confirmation,
+      value: confirmationCounts[confirmation],
+    }))
+
+    // Find top vendors by order count and amount
+    const vendorData = purchaseOrders.reduce((acc, po) => {
+      const vendorId = po.vendorId
+      if (!acc[vendorId]) {
+        acc[vendorId] = {
+          vendorId,
+          vendorName: po.vendorName,
+          orderCount: 0,
+          totalAmount: 0,
+        }
+      }
+      acc[vendorId].orderCount += 1
+      acc[vendorId].totalAmount += po.totalAmount
+      return acc
+    }, {})
+
+    const topVendors = Object.values(vendorData)
+      .sort((a, b) => b.totalAmount - a.totalAmount)
+      .slice(0, 5)
+
+    // Group orders by month for timeline
+    const ordersByMonth = purchaseOrders.reduce((acc, po) => {
+      // Use requestedDate if available, otherwise use createdAt
+      const dateStr = po.requestedDate || po.createdAt
+
+      // Try to parse the date
+      let date
+      try {
+        date = new Date(dateStr)
+      } catch (e) {
+        console.error("Error parsing date:", dateStr)
+        return acc
+      }
+
+      if (isNaN(date.getTime())) {
+        return acc // Skip if date is invalid
+      }
+
+      const monthYear = `${date.getMonth() + 1}/${date.getFullYear()}`
+
+      if (!acc[monthYear]) {
+        acc[monthYear] = {
+          monthYear,
+          count: 0,
+          amount: 0,
+        }
+      }
+
+      acc[monthYear].count += 1
+      acc[monthYear].amount += po.totalAmount
+
+      return acc
+    }, {})
+
+    const orderTimeline = Object.values(ordersByMonth).sort((a, b) => {
+      const [aMonth, aYear] = a.monthYear.split("/")
+      const [bMonth, bYear] = b.monthYear.split("/")
+      return new Date(aYear, aMonth - 1) - new Date(bYear, bMonth - 1)
+    })
+
+    // Group orders by payment terms
+    const paymentTermsCounts = purchaseOrders.reduce((acc, po) => {
+      const terms = po.paymentTerms || "Net 30" // Default payment term
+      if (!acc[terms]) {
+        acc[terms] = {
+          count: 0,
+          amount: 0,
+        }
+      }
+      acc[terms].count += 1
+      acc[terms].amount += po.totalAmount || 0
+      return acc
+    }, {})
+
+    const ordersByPaymentTerms = Object.keys(paymentTermsCounts).map((terms) => ({
+      name: terms,
+      count: paymentTermsCounts[terms].count,
+      amount: paymentTermsCounts[terms].amount,
+    }))
+
+    return {
+      totalOrders,
+      totalAmount,
+      averageOrderValue,
+      statusData,
+      confirmationData,
+      topVendors,
+      orderTimeline,
+      ordersByPaymentTerms,
+    }
+  }
+
+  // Process vendor data for analytics
+  const processVendorData = () => {
+    if (!vendors || vendors.length === 0) {
+      return {
+        totalVendors: 0,
+        totalProducts: 0,
+        averageProductsPerVendor: 0,
+        vendorsByCity: [],
+        productDistribution: [],
+        vendorRatings: [],
+        activeVendors: 0,
+      }
+    }
+
+    // Calculate basic metrics
+    const totalVendors = vendors.length
+    const activeVendors = vendors.filter((v) => v.isActive).length
+    const totalProducts = vendors.reduce((sum, vendor) => sum + (vendor.productList?.length || 0), 0)
+    const averageProductsPerVendor = totalProducts / totalVendors
+
+    // Group vendors by city
+    const cityCounts = vendors.reduce((acc, vendor) => {
+      const city = vendor.city || "Unknown"
+      if (!acc[city]) {
+        acc[city] = 0
+      }
+      acc[city] += 1
+      return acc
+    }, {})
+
+    const vendorsByCity = Object.keys(cityCounts).map((city) => ({
+      name: city,
+      value: cityCounts[city],
+    }))
+
+    // Create product distribution data
+    const productDistribution = vendors
+      .map((vendor) => ({
+        name: vendor.vendorName,
+        productCount: vendor.productList?.length || 0,
+        totalValue: vendor.productList?.reduce((sum, product) => sum + product.price * product.quantity, 0) || 0,
+      }))
+      .sort((a, b) => b.totalValue - a.totalValue)
+      .slice(0, 10) // Top 10 vendors by product value
+
+    // Group vendors by rating
+    const ratingCounts = vendors.reduce((acc, vendor) => {
+      const rating = vendor.rating || 0
+      if (!acc[rating]) {
+        acc[rating] = 0
+      }
+      acc[rating] += 1
+      return acc
+    }, {})
+
+    const vendorRatings = Object.keys(ratingCounts)
+      .map((rating) => ({
+        rating: Number.parseInt(rating),
+        count: ratingCounts[rating],
+      }))
+      .sort((a, b) => a.rating - b.rating)
+
+    return {
+      totalVendors,
+      activeVendors,
+      totalProducts,
+      averageProductsPerVendor,
+      vendorsByCity,
+      productDistribution,
+      vendorRatings,
+    }
+  }
+
+  // Process menu and inventory data for analytics
+  const processMenuAndInventoryData = () => {
+    if (
+      (!finishedGoods || finishedGoods.length === 0) &&
+      (!menuCategories || menuCategories.length === 0) &&
+      (!bomData || bomData.length === 0)
+    ) {
+      return {
+        totalCategories: 0,
+        totalProducts: 0,
+        totalStock: 0,
+        averagePrice: 0,
+        categoryDistribution: [],
+        stockDistribution: [],
+        priceRanges: [],
+        rawMaterialsUsage: [],
+        lowStockItems: [],
+      }
+    }
+
+    // Calculate basic metrics
+    const totalCategories = menuCategories?.length || 0
+    const totalProducts = finishedGoods?.length || 0
+    const totalStock = finishedGoods?.reduce((sum, product) => sum + (product.stock || 0), 0) || 0
+    const totalPrice = finishedGoods?.reduce((sum, product) => sum + (product.price || 0), 0) || 0
+    const averagePrice = totalProducts > 0 ? totalPrice / totalProducts : 0
+
+    // Group products by category
+    const categoryMap = {}
+    if (menuCategories) {
+      menuCategories.forEach((cat) => {
+        categoryMap[cat._id] = cat.name || "General Products"
+      })
+    }
+
+    const categoryCounts = {}
+    if (finishedGoods) {
+      finishedGoods.forEach((product) => {
+        const categoryId = product.category
+        const categoryName = categoryId ? categoryMap[categoryId] || "Food & Beverages" : "Uncategorized"
+
+        if (!categoryCounts[categoryName]) {
+          categoryCounts[categoryName] = {
+            count: 0,
+            stock: 0,
+            value: 0,
+          }
+        }
+
+        categoryCounts[categoryName].count += 1
+        categoryCounts[categoryName].stock += product.stock || 0
+        categoryCounts[categoryName].value += (product.price || 0) * (product.stock || 0)
+      })
+    }
+
+    const categoryDistribution = Object.keys(categoryCounts).map((category) => ({
+      name: category,
+      count: categoryCounts[category].count,
+      stock: categoryCounts[category].stock,
+      value: categoryCounts[category].value,
+    }))
+
+    // Create stock distribution data
+    const stockDistribution = finishedGoods
+      ? finishedGoods
+          .filter((product) => product.stock > 0)
+          .map((product) => ({
+            name: product.name,
+            stock: product.stock,
+            value: (product.price || 0) * (product.stock || 0),
+          }))
+          .sort((a, b) => b.stock - a.stock)
+          .slice(0, 10) // Top 10 products by stock
+      : []
+
+    // Group products by price range
+    const priceRanges = {
+      "0-10": 0,
+      "11-50": 0,
+      "51-100": 0,
+      "101-500": 0,
+      "501+": 0,
+    }
+
+    if (finishedGoods) {
+      finishedGoods.forEach((product) => {
+        const price = product.price || 0
+
+        if (price <= 10) priceRanges["0-10"]++
+        else if (price <= 50) priceRanges["11-50"]++
+        else if (price <= 100) priceRanges["51-100"]++
+        else if (price <= 500) priceRanges["101-500"]++
+        else priceRanges["501+"]++
+      })
+    }
+
+    const priceRangeData = Object.keys(priceRanges).map((range) => ({
+      name: range,
+      value: priceRanges[range],
+    }))
+
+    // Analyze raw materials usage
+    const rawMaterialsUsage = {}
+
+    if (finishedGoods) {
+      finishedGoods.forEach((product) => {
+        if (product.rawIngredients && product.rawIngredients.length > 0) {
+          product.rawIngredients.forEach((ingredient) => {
+            const rawId = ingredient.RawID
+
+            if (!rawMaterialsUsage[rawId]) {
+              rawMaterialsUsage[rawId] = {
+                id: rawId,
+                name: ingredient.Name,
+                totalUsage: 0,
+                productCount: 0,
+                unit: ingredient.UnitMeasure,
+              }
+            }
+
+            rawMaterialsUsage[rawId].totalUsage += ingredient.RawConsume
+            rawMaterialsUsage[rawId].productCount += 1
+          })
+        }
+      })
+    }
+
+    const rawMaterialsData = Object.values(rawMaterialsUsage)
+      .sort((a, b) => b.totalUsage - a.totalUsage)
+      .slice(0, 10) // Top 10 raw materials by usage
+
+    // Find low stock items
+    const lowStockItems = finishedGoods
+      ? finishedGoods
+          .filter((product) => (product.stock || 0) < 10)
+          .map((product) => ({
+            name: product.name || "Unknown",
+            stock: product.stock || 0,
+            price: product.price || 0,
+            value: (product.price || 0) * (product.stock || 0),
+            category: product.category ? categoryMap[product.category] || "Unknown" : "Uncategorized",
+          }))
+          .sort((a, b) => a.stock - b.stock)
+      : []
+
+    return {
+      totalCategories,
+      totalStock,
+      averagePrice,
+      categoryDistribution,
+      stockDistribution,
+      priceRangeData,
+      rawMaterialsData,
+      lowStockItems,
+    }
+  }
+
+  const {
+    dailyData,
+    paymentMethodData,
+    totalSales,
+    avgTransactionValue,
+    totalItems,
+    itemsPerTransaction,
+    salesByHour,
+    topSellingProducts,
+    salesGrowth,
+  } = processTransactionData()
+
+  const { statusSummary, authorityTypeCounts, locationData, activityTimeline } = processPOSData()
+
+  const { activeBanks, inactiveBanks, bankStatusData, creationTimeline, banksByCity } = processBankData()
+
+  const {
+    totalOrders,
+    totalAmount,
+    averageOrderValue,
+    statusData,
+    confirmationData,
+    topVendors,
+    orderTimeline,
+    ordersByPaymentTerms,
+  } = processPurchaseOrderData()
+
+  const {
+    totalVendors,
+    activeVendors,
+    totalProducts,
+    averageProductsPerVendor,
+    vendorsByCity,
+    productDistribution,
+    vendorRatings,
+  } = processVendorData()
+
+  const {
+    totalCategories,
+    totalStock,
+    averagePrice,
+    categoryDistribution,
+    stockDistribution,
+    priceRangeData,
+    rawMaterialsData,
+    lowStockItems,
+  } = processMenuAndInventoryData()
+
+  // Common chart actions
+  const commonChartActions = (
+    <>
+      <Tooltip title="Download Data">
+        <IconButton size="small">
+          <FileDownload fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="Print Chart">
+        <IconButton size="small">
+          <Print fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="Share">
+        <IconButton size="small">
+          <Share fontSize="small" />
+        </IconButton>
+      </Tooltip>
+    </>
+  )
+
+  if (loading) {
+    return <LoadingState />
+  }
+
+  if (error) {
+    return <ErrorState message={error} onRetry={handleRetry} />
+  }
+
   return (
-    <ThemeProvider theme={chartTheme}>
+    <ThemeProvider theme={customTheme}>
       <MainContentWrapper>
-        <LocalizationProvider dateAdapter={AdapterDateFns}>
-          <ReportAnalyticsContent />
-        </LocalizationProvider>
+        <Box
+          sx={{
+            width: "100%",
+            overflow: "auto",
+            bgcolor: "background.default",
+            minHeight: "100vh",
+            py: 3,
+            px: 3,
+          }}
+        >
+          <Paper elevation={3} sx={{ width: "100%", borderRadius: 4, overflow: "hidden" }}>
+            {/* Dashboard Header */}
+            <Box sx={{ p: 3, borderBottom: "1px solid rgba(0, 0, 0, 0.05)" }}>
+              <DashboardHeader
+                title="Business Analytics Dashboard"
+                subtitle="Comprehensive insights into your business performance"
+                dateRange={dateRange}
+                onDateRangeChange={() => {}}
+                actions={
+                  <>
+                    <Button variant="outlined" color="primary" startIcon={<Download />}>
+                      Export
+                    </Button>
+                    <Button variant="contained" color="primary" startIcon={<Refresh />} onClick={handleRetry}>
+                      Refresh
+                    </Button>
+                  </>
+                }
+              />
+            </Box>
+
+            <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+              <Tabs
+                value={value}
+                onChange={handleChange}
+                aria-label="analytics tabs"
+                variant="scrollable"
+                scrollButtons="auto"
+                sx={{
+                  px: 3,
+                  "& .MuiTabs-indicator": {
+                    backgroundColor: "#f15a22",
+                    height: 3,
+                  },
+                }}
+              >
+                <Tab icon={<ShoppingCart />} iconPosition="start" label="Retail & Commerce" {...a11yProps(0)} />
+                <Tab icon={<AccountBalance />} iconPosition="start" label="Finance" {...a11yProps(1)} />
+                <Tab icon={<Inventory />} iconPosition="start" label="Inventory" {...a11yProps(2)} />
+                <Tab icon={<LocalShipping />} iconPosition="start" label="Procurement" {...a11yProps(3)} />
+              </Tabs>
+            </Box>
+
+            {/* Retail and Commerce Tab */}
+            <TabPanel value={value} index={0}>
+              <Box sx={{ px: 4, py: 3 }}>
+                <SectionHeader
+                  title="Retail and Commerce Analytics"
+                  subtitle="Track sales performance, customer behavior, and transaction metrics"
+                  icon={<ShoppingCart />}
+                  actions={
+                    <Button variant="outlined" color="primary" startIcon={<Download />}>
+                      Export Report
+                    </Button>
+                  }
+                />
+
+                {/* Summary Cards */}
+                <Grid container spacing={3} sx={{ mb: 4 }}>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <StatisticCard
+                      title="Total Sales"
+                      value={`$${totalSales.toFixed(2)}`}
+                      change={salesGrowth.toFixed(1)}
+                      icon={<AttachMoney sx={{ color: "#fff" }} />}
+                      color="primary"
+                      footer={
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            color: "#fff",
+                            opacity: 0.8,
+                            textAlign: "center",
+                          }}
+                        >
+                          {transactions.length} transactions
+                        </Typography>
+                      }
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} sm={6} md={3}>
+                    <MetricCard
+                      title="Average Transaction"
+                      value={`$${avgTransactionValue.toFixed(2)}`}
+                      change={3.7}
+                      icon={<TrendingUp />}
+                      color="success"
+                      subtitle={`${itemsPerTransaction.toFixed(1)} items per transaction`}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} sm={6} md={3}>
+                    <MetricCard
+                      title="POS Terminals"
+                      value={statusSummary.total}
+                      change={-2.1}
+                      icon={<PointOfSale />}
+                      color="warning"
+                      subtitle={`${statusSummary.online} online, ${statusSummary.offline} offline`}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} sm={6} md={3}>
+                    <MetricCard
+                      title="Total Items Sold"
+                      value={totalItems}
+                      change={5.2}
+                      icon={<Inventory />}
+                      color="info"
+                      subtitle="Across all transactions"
+                    />
+                  </Grid>
+                </Grid>
+
+                <Divider />
+
+                {/* Transaction Performance */}
+                <Typography variant="h6" gutterBottom sx={{ mt: 4, mb: 3, display: "flex", alignItems: "center" }}>
+                  <TrendingUp sx={{ mr: 1, color: theme.palette.primary.main }} />
+                  Transaction Performance
+                </Typography>
+
+                {dailyData.length === 0 ? (
+                  <EmptyState message="No transaction data available to display." />
+                ) : (
+                  <Grid container spacing={3}>
+                    <Grid item xs={12} lg={8}>
+                      <EnhancedAreaChart
+                        title="Daily Sales Revenue"
+                        subtitle="Track your daily sales performance over time"
+                        data={dailyData}
+                        xKey="date"
+                        yKeys={["total"]}
+                        height={350}
+                        formatter={(value) => `$${value.toFixed(2)}`}
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} lg={4}>
+                      <EnhancedDonutChart
+                        title="Payment Methods"
+                        subtitle="Distribution of transactions by payment type"
+                        data={paymentMethodData}
+                        dataKey="count"
+                        nameKey="name"
+                        height={350}
+                        formatter={(value) => `${value} transactions`}
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} md={6}>
+                      <EnhancedBarChart
+                        title="Hourly Sales Distribution"
+                        subtitle="Sales volume by hour of day"
+                        data={salesByHour}
+                        xKey="hour"
+                        yKeys={["sales", "count"]}
+                        height={350}
+                        formatter={(value, name) =>
+                          name === "sales" ? `$${value.toFixed(2)}` : `${value} transactions`
+                        }
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} md={6}>
+                      <EnhancedComposedChart
+                        title="Transaction Metrics"
+                        subtitle="Count, revenue, and items sold per day"
+                        data={dailyData}
+                        xKey="date"
+                        barKeys={["count"]}
+                        lineKeys={["total"]}
+                        areaKeys={["items"]}
+                        height={350}
+                        formatter={(value, name) => {
+                          if (name === "total") return `$${value.toFixed(2)}`
+                          if (name === "count") return `${value} transactions`
+                          return `${value} items`
+                        }}
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12}>
+                      <EnhancedTable
+                        title="Top Selling Products"
+                        subtitle="Products generating the most revenue"
+                        columns={[
+                          { key: "name", label: "Product Name", defaultValue: "Unnamed Product" },
+                          {
+                            key: "quantity",
+                            label: "Quantity Sold",
+                            align: "right",
+                            defaultValue: "0",
+                          },
+                          {
+                            key: "revenue",
+                            label: "Revenue",
+                            align: "right",
+                            render: (value) => `$${(value || 0).toFixed(2)}`,
+                          },
+                          {
+                            key: "avgPrice",
+                            label: "Avg. Price",
+                            align: "right",
+                            render: (_, row) => {
+                              const avg = row.quantity > 0 ? row.revenue / row.quantity : 0
+                              return `$${avg.toFixed(2)}`
+                            },
+                          },
+                          {
+                            key: "percentOfTotal",
+                            label: "% of Total Sales",
+                            align: "right",
+                            render: (_, row) => {
+                              const percent = totalSales > 0 ? (row.revenue / totalSales) * 100 : 0
+                              return (
+                                <Box sx={{ display: "flex", alignItems: "center" }}>
+                                  <Box sx={{ width: "60%", mr: 1 }}>
+                                    <LinearProgress
+                                      variant="determinate"
+                                      value={percent}
+                                      sx={{
+                                        height: 8,
+                                        borderRadius: 4,
+                                        backgroundColor: alpha(theme.palette.primary.main, 0.2),
+                                        "& .MuiLinearProgress-bar": {
+                                          backgroundColor: theme.palette.primary.main,
+                                        },
+                                      }}
+                                    />
+                                  </Box>
+                                  <Typography variant="body2">{percent.toFixed(1)}%</Typography>
+                                </Box>
+                              )
+                            },
+                          },
+                        ]}
+                        data={topSellingProducts}
+                        height={400}
+                        pagination={true}
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+                  </Grid>
+                )}
+
+                <Divider />
+
+                {/* POS Machine Status */}
+                <Typography variant="h6" gutterBottom sx={{ mt: 4, mb: 3, display: "flex", alignItems: "center" }}>
+                  <PointOfSale sx={{ mr: 1, color: theme.palette.primary.main }} />
+                  POS Terminal Status
+                </Typography>
+
+                {posConfigs.length === 0 ? (
+                  <EmptyState message="No POS configuration data available to display." />
+                ) : (
+                  <Grid container spacing={3}>
+                    <Grid item xs={12} md={4}>
+                      <Card sx={{ p: 3, height: "100%" }}>
+                        <Typography variant="subtitle1" sx={{ mb: 3, fontWeight: 600 }}>
+                          Terminal Status Overview
+                        </Typography>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "space-around",
+                            mb: 3,
+                          }}
+                        >
+                          <Box sx={{ textAlign: "center" }}>
+                            <Typography
+                              variant="h4"
+                              sx={{
+                                color: theme.palette.primary.main,
+                                fontWeight: 700,
+                              }}
+                            >
+                              {statusSummary.total}
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: "#7f8c8d" }}>
+                              Total Terminals
+                            </Typography>
+                          </Box>
+                          <Box sx={{ textAlign: "center" }}>
+                            <Typography
+                              variant="h4"
+                              sx={{
+                                color: theme.palette.success.main,
+                                fontWeight: 700,
+                              }}
+                            >
+                              {statusSummary.online}
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: "#7f8c8d" }}>
+                              Online
+                            </Typography>
+                          </Box>
+                          <Box sx={{ textAlign: "center" }}>
+                            <Typography
+                              variant="h4"
+                              sx={{
+                                color: theme.palette.error.main,
+                                fontWeight: 700,
+                              }}
+                            >
+                              {statusSummary.offline}
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: "#7f8c8d" }}>
+                              Offline
+                            </Typography>
+                          </Box>
+                        </Box>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              mb: 1,
+                              display: "flex",
+                              justifyContent: "space-between",
+                            }}
+                          >
+                            <span>Online Rate</span>
+                            <span>{((statusSummary.online / statusSummary.total) * 100).toFixed(1)}%</span>
+                          </Typography>
+                          <LinearProgress
+                            variant="determinate"
+                            value={(statusSummary.online / statusSummary.total) * 100}
+                            sx={{
+                              height: 8,
+                              borderRadius: 4,
+                              backgroundColor: alpha(theme.palette.error.main, 0.2),
+                              "& .MuiLinearProgress-bar": {
+                                backgroundColor: theme.palette.success.main,
+                              },
+                            }}
+                          />
+                        </Box>
+                        <Box>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              mb: 1,
+                              display: "flex",
+                              justifyContent: "space-between",
+                            }}
+                          >
+                            <span>Offline Rate</span>
+                            <span>{((statusSummary.offline / statusSummary.total) * 100).toFixed(1)}%</span>
+                          </Typography>
+                          <LinearProgress
+                            variant="determinate"
+                            value={(statusSummary.offline / statusSummary.total) * 100}
+                            sx={{
+                              height: 8,
+                              borderRadius: 4,
+                              backgroundColor: alpha(theme.palette.success.main, 0.2),
+                              "& .MuiLinearProgress-bar": {
+                                backgroundColor: theme.palette.error.main,
+                              },
+                            }}
+                          />
+                        </Box>
+                      </Card>
+                    </Grid>
+
+                    <Grid item xs={12} md={8}>
+                      <EnhancedBarChart
+                        title="POS Terminals by Authority Type"
+                        subtitle="Distribution of terminals by authority level and status"
+                        data={authorityTypeCounts}
+                        xKey="name"
+                        yKeys={["online", "offline"]}
+                        stacked={true}
+                        height={350}
+                        formatter={(value, name) => `${value} terminals`}
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} md={6}>
+                      <EnhancedBarChart
+                        title="POS Terminals by Location"
+                        subtitle="Distribution of terminals by store location"
+                        data={locationData}
+                        xKey="name"
+                        yKeys={["online", "offline"]}
+                        stacked={true}
+                        height={350}
+                        formatter={(value, name) => `${value} terminals`}
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} md={6}>
+                      <EnhancedTable
+                        title="Recent Terminal Activity"
+                        subtitle="Latest status changes and activities"
+                        columns={[
+                          { key: "id", label: "Terminal ID", defaultValue: "T-Unknown" },
+                          {
+                            key: "date",
+                            label: "Last Active",
+                            render: (value) => {
+                              try {
+                                const date = new Date(value)
+                                return isNaN(date.getTime())
+                                  ? "Today, " + new Date().toLocaleTimeString()
+                                  : date.toLocaleString()
+                              } catch (e) {
+                                return "Today, " + new Date().toLocaleTimeString()
+                              }
+                            },
+                          },
+                          {
+                            key: "status",
+                            label: "Status",
+                            render: (value) => (
+                              <StatusBadge status={(value || "offline").toLowerCase()} text={value || "Offline"} />
+                            ),
+                          },
+                        ]}
+                        data={activityTimeline}
+                        height={350}
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12}>
+                      <EnhancedTable
+                        title="POS Terminal Details"
+                        subtitle="Complete information about all terminals"
+                        columns={[
+                          { key: "PosID", label: "Terminal ID", defaultValue: "T-Unknown" },
+                          { key: "RegistrationNumber", label: "Registration", defaultValue: "Unregistered" },
+                          { key: "Location", label: "Location", defaultValue: "Main Store" },
+                          { key: "AuthorityType", label: "Authority", defaultValue: "Standard" },
+                          {
+                            key: "POSStatus",
+                            label: "Status",
+                            render: (value) => (
+                              <StatusBadge status={(value || "offline").toLowerCase()} text={value || "Offline"} />
+                            ),
+                          },
+                          {
+                            key: "LastActive",
+                            label: "Last Active",
+                            render: (value) => {
+                              try {
+                                const date = new Date(value)
+                                return isNaN(date.getTime())
+                                  ? "Today, " + new Date().toLocaleTimeString()
+                                  : date.toLocaleString()
+                              } catch (e) {
+                                return "Today, " + new Date().toLocaleTimeString()
+                              }
+                            },
+                          },
+                          {
+                            key: "TimeBound",
+                            label: "Valid Period",
+                            render: (value) => {
+                              if (!value || !value.Start || !value.End) {
+                                const today = new Date()
+                                const nextYear = new Date()
+                                nextYear.setFullYear(today.getFullYear() + 1)
+                                return (
+                                  <Typography variant="body2">
+                                    {today.toLocaleDateString()} - {nextYear.toLocaleDateString()}
+                                  </Typography>
+                                )
+                              }
+                              return (
+                                <Typography variant="body2">
+                                  {new Date(value.Start).toLocaleDateString()} -{" "}
+                                  {new Date(value.End).toLocaleDateString()}
+                                </Typography>
+                              )
+                            },
+                          },
+                        ]}
+                        data={posConfigs}
+                        height={400}
+                        pagination={true}
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+                  </Grid>
+                )}
+              </Box>
+            </TabPanel>
+
+            {/* Finance Tab */}
+            <TabPanel value={value} index={1}>
+              <Box sx={{ px: 4, py: 3 }}>
+                <SectionHeader
+                  title="Financial Analytics"
+                  subtitle="Monitor revenue, expenses, and banking relationships"
+                  icon={<AccountBalance />}
+                  actions={
+                    <Button variant="outlined" color="primary" startIcon={<Download />}>
+                      Export Report
+                    </Button>
+                  }
+                />
+
+                {/* Summary Cards */}
+                <Grid container spacing={3} sx={{ mb: 4 }}>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <StatisticCard
+                      title="Revenue"
+                      value={`$${totalSales.toFixed(2)}`}
+                      change={salesGrowth.toFixed(1)}
+                      icon={<AttachMoney sx={{ color: "#fff" }} />}
+                      color="primary"
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} sm={6} md={3}>
+                    <StatisticCard
+                      title="Expenses"
+                      value={`$${totalAmount.toFixed(2)}`}
+                      change={2.3}
+                      icon={<ReceiptLong sx={{ color: "#fff" }} />}
+                      color="error"
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} sm={6} md={3}>
+                    <MetricCard
+                      title="Net Profit"
+                      value={`$${(totalSales - totalAmount).toFixed(2)}`}
+                      change={4.7}
+                      icon={<TrendingUp />}
+                      color="success"
+                      subtitle={`${(((totalSales - totalAmount) / totalSales) * 100).toFixed(1)}% margin`}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} sm={6} md={3}>
+                    <MetricCard
+                      title="Banking Partners"
+                      value={banks.length}
+                      change={0}
+                      icon={<AccountBalance />}
+                      color="info"
+                      subtitle={`${activeBanks} active, ${inactiveBanks} inactive`}
+                    />
+                  </Grid>
+                </Grid>
+
+                <Divider />
+
+                {/* Revenue vs Expenses */}
+                <Typography variant="h6" gutterBottom sx={{ mt: 4, mb: 3, display: "flex", alignItems: "center" }}>
+                  <CompareArrows sx={{ mr: 1, color: theme.palette.primary.main }} />
+                  Revenue vs Expenses
+                </Typography>
+
+                <Grid container spacing={3}>
+                  <Grid item xs={12} lg={8}>
+                    <EnhancedComposedChart
+                      title="Monthly Financial Overview"
+                      subtitle="Compare revenue and expenses over time"
+                      data={orderTimeline.map((month) => ({
+                        ...month,
+                        revenue: month.amount * 1.2, // Simulated revenue for demo
+                        profit: month.amount * 1.2 - month.amount,
+                      }))}
+                      xKey="monthYear"
+                      barKeys={["amount", "revenue"]}
+                      lineKeys={["profit"]}
+                      height={400}
+                      formatter={(value, name) => {
+                        if (name === "amount") return `$${value.toFixed(2)} (Expenses)`
+                        if (name === "revenue") return `$${value.toFixed(2)} (Revenue)`
+                        return `$${value.toFixed(2)} (Profit)`
+                      }}
+                      actions={commonChartActions}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} md={6} lg={4}>
+                    <Card sx={{ p: 3, height: "100%" }}>
+                      <Typography variant="subtitle1" sx={{ mb: 3, fontWeight: 600 }}>
+                        Financial Health Indicators
+                      </Typography>
+
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 2,
+                        }}
+                      >
+                        <KPIIndicator
+                          title="Profit Margin"
+                          value={(((totalSales - totalAmount) / totalSales) * 100).toFixed(1)}
+                          unit="%"
+                          target={25}
+                          status={((totalSales - totalAmount) / totalSales) * 100 > 20 ? "success" : "warning"}
+                          icon={<Percent />}
+                        />
+
+                        <KPIIndicator
+                          title="Revenue Growth"
+                          value={salesGrowth.toFixed(1)}
+                          unit="%"
+                          target={10}
+                          status={salesGrowth > 5 ? "success" : salesGrowth > 0 ? "warning" : "error"}
+                          icon={<TrendingUp />}
+                        />
+
+                        <KPIIndicator
+                          title="Expense Ratio"
+                          value={((totalAmount / totalSales) * 100).toFixed(1)}
+                          unit="%"
+                          target={70}
+                          status={(totalAmount / totalSales) * 100 < 75 ? "success" : "warning"}
+                          icon={<ReceiptLong />}
+                        />
+
+                        <KPIIndicator
+                          title="Average Transaction"
+                          value={avgTransactionValue.toFixed(2)}
+                          unit="$"
+                          target={100}
+                          status={avgTransactionValue > 80 ? "success" : "warning"}
+                          icon={<ShoppingCart />}
+                        />
+                      </Box>
+                    </Card>
+                  </Grid>
+
+                  <Grid item xs={12} md={6}>
+                    <EnhancedPieChart
+                      title="Revenue Distribution"
+                      subtitle="Revenue breakdown by payment method"
+                      data={paymentMethodData.map((method) => ({
+                        name: method.name,
+                        value: method.total,
+                      }))}
+                      dataKey="value"
+                      nameKey="name"
+                      height={350}
+                      formatter={(value) => `$${value.toFixed(2)}`}
+                      actions={commonChartActions}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} md={6}>
+                    <EnhancedBarChart
+                      title="Expense Categories"
+                      subtitle="Breakdown of expenses by category"
+                      data={[
+                        { name: "Inventory", value: totalAmount * 0.6 },
+                        { name: "Operations", value: totalAmount * 0.2 },
+                        { name: "Marketing", value: totalAmount * 0.1 },
+                        { name: "Admin", value: totalAmount * 0.05 },
+                        { name: "Other", value: totalAmount * 0.05 },
+                      ]}
+                      xKey="name"
+                      yKeys={["value"]}
+                      height={350}
+                      formatter={(value) => `$${value.toFixed(2)}`}
+                      actions={commonChartActions}
+                    />
+                  </Grid>
+                </Grid>
+
+                <Divider />
+
+                {/* Bank Analytics */}
+                <Typography variant="h6" gutterBottom sx={{ mt: 4, mb: 3, display: "flex", alignItems: "center" }}>
+                  <AccountBalance sx={{ mr: 1, color: theme.palette.primary.main }} />
+                  Banking Relationships
+                </Typography>
+
+                {banks.length === 0 ? (
+                  <EmptyState message="No bank data available to display." />
+                ) : (
+                  <Grid container spacing={3}>
+                    <Grid item xs={12} md={5}>
+                      <EnhancedDonutChart
+                        title="Bank Status Distribution"
+                        subtitle="Active vs. inactive banking relationships"
+                        data={bankStatusData}
+                        dataKey="value"
+                        nameKey="name"
+                        height={350}
+                        formatter={(value) => `${value} banks`}
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} md={7}>
+                      <EnhancedAreaChart
+                        title="Bank Relationship Timeline"
+                        subtitle="Growth of banking relationships over time"
+                        data={creationTimeline}
+                        xKey="monthYear"
+                        yKeys={["active", "inactive"]}
+                        stacked={true}
+                        height={350}
+                        formatter={(value) => `${value} banks`}
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} md={6}>
+                      <EnhancedBarChart
+                        title="Banks by City"
+                        subtitle="Geographic distribution of banking relationships"
+                        data={banksByCity}
+                        xKey="name"
+                        yKeys={["active", "inactive"]}
+                        stacked={true}
+                        height={350}
+                        formatter={(value) => `${value} banks`}
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} md={6}>
+                      <EnhancedRadarChart
+                        title="Banking Services Utilization"
+                        subtitle="Usage of different banking services"
+                        data={[
+                          { name: "Checking", value: 90 },
+                          { name: "Savings", value: 70 },
+                          { name: "Credit", value: 85 },
+                          { name: "Loans", value: 60 },
+                          { name: "Investments", value: 40 },
+                          { name: "Merchant Services", value: 75 },
+                        ]}
+                        dataKey="Banking Services"
+                        height={350}
+                        formatter={(value) => `${value}%`}
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12}>
+                      <EnhancedTable
+                        title="Banking Partners"
+                        subtitle="Complete list of banking relationships"
+                        columns={[
+                          { key: "name", label: "Bank Name" },
+                          { key: "code", label: "Code" },
+                          {
+                            key: "city",
+                            label: "City",
+                          },
+                          { key: "address", label: "Address" },
+                          {
+                            key: "isActive",
+                            label: "Status",
+                            render: (value) => (
+                              <StatusBadge
+                                status={value ? "active" : "inactive"}
+                                text={value ? "Active" : "Inactive"}
+                              />
+                            ),
+                          },
+                          {
+                            key: "createdAt",
+                            label: "Relationship Since",
+                            render: (value) => new Date(value).toLocaleDateString(),
+                          },
+                          {
+                            key: "updatedAt",
+                            label: "Last Updated",
+                            render: (value) => new Date(value).toLocaleDateString(),
+                          },
+                        ]}
+                        data={banks}
+                        height={400}
+                        pagination={true}
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+                  </Grid>
+                )}
+              </Box>
+            </TabPanel>
+
+            {/* Inventory Tab */}
+            <TabPanel value={value} index={2}>
+              <Box sx={{ px: 4, py: 3 }}>
+                <SectionHeader
+                  title="Inventory Analytics"
+                  subtitle="Track stock levels, product performance, and raw materials"
+                  icon={<Inventory />}
+                  actions={
+                    <Button variant="outlined" color="primary" startIcon={<Download />}>
+                      Export Report
+                    </Button>
+                  }
+                />
+
+                {/* Summary Cards */}
+                <Grid container spacing={3} sx={{ mb: 4 }}>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <StatisticCard
+                      title="Total Products"
+                      value={finishedGoods?.length || 0}
+                      change={5.2}
+                      icon={<Inventory sx={{ color: "#fff" }} />}
+                      color="primary"
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} sm={6} md={3}>
+                    <MetricCard
+                      title="Total Stock"
+                      value={totalStock}
+                      change={-2.1}
+                      icon={<Inventory />}
+                      color="warning"
+                      subtitle="Units in inventory"
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} sm={6} md={3}>
+                    <MetricCard
+                      title="Inventory Value"
+                      value={`$${(totalStock * averagePrice).toFixed(2)}`}
+                      change={3.7}
+                      icon={<AttachMoney />}
+                      color="success"
+                      subtitle={`Avg. price: $${averagePrice.toFixed(2)}`}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} sm={6} md={3}>
+                    <MetricCard
+                      title="Low Stock Items"
+                      value={lowStockItems.length}
+                      change={12.5}
+                      icon={<Warning />}
+                      color="error"
+                      subtitle="Items requiring attention"
+                    />
+                  </Grid>
+                </Grid>
+
+                <Divider />
+
+                {/* Product Analytics */}
+                <Typography variant="h6" gutterBottom sx={{ mt: 4, mb: 3, display: "flex", alignItems: "center" }}>
+                  <Restaurant sx={{ mr: 1, color: theme.palette.primary.main }} />
+                  Product Analytics
+                </Typography>
+
+                {finishedGoods?.length === 0 ? (
+                  <EmptyState message="No product data available to display." />
+                ) : (
+                  <Grid container spacing={3}>
+                    <Grid item xs={12} md={6}>
+                      <EnhancedPieChart
+                        title="Products by Category"
+                        subtitle="Distribution of products across categories"
+                        data={categoryDistribution}
+                        dataKey="count"
+                        nameKey="name"
+                        height={350}
+                        formatter={(value) => `${value} products`}
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} md={6}>
+                      <EnhancedBarChart
+                        title="Price Distribution"
+                        subtitle="Products grouped by price range"
+                        data={priceRangeData}
+                        xKey="name"
+                        yKeys={["value"]}
+                        height={350}
+                        formatter={(value) => `${value} products`}
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} md={7}>
+                      <EnhancedBarChart
+                        title="Top Products by Stock Level"
+                        subtitle="Products with highest inventory levels"
+                        data={stockDistribution}
+                        xKey="name"
+                        yKeys={["stock", "value"]}
+                        height={400}
+                        formatter={(value, name) => (name === "stock" ? `${value} units` : `$${value.toFixed(2)}`)}
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} md={5}>
+                      <EnhancedTreemap
+                        title="Inventory Value by Category"
+                        subtitle="Visual representation of inventory value distribution"
+                        data={categoryDistribution}
+                        dataKey="value"
+                        nameKey="name"
+                        height={400}
+                        formatter={(value) => `$${value.toFixed(2)}`}
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12}>
+                      <Card sx={{ p: 0, overflow: "hidden" }}>
+                        <Box
+                          sx={{
+                            p: 3,
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            borderBottom: "1px solid rgba(0, 0, 0, 0.05)",
+                          }}
+                        >
+                          <Box>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                              Low Stock Alert
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: "#7f8c8d" }}>
+                              Products that need to be restocked soon
+                            </Typography>
+                          </Box>
+                          <Badge badgeContent={lowStockItems.length} color="error">
+                            <Warning color="error" />
+                          </Badge>
+                        </Box>
+                        <TableContainer sx={{ maxHeight: 350 }}>
+                          <Table stickyHeader>
+                            <TableHead>
+                              <TableRow>
+                                <TableCell>Product Name</TableCell>
+                                <TableCell>Category</TableCell>
+                                <TableCell align="right">Current Stock</TableCell>
+                                <TableCell align="right">Price</TableCell>
+                                <TableCell align="right">Value</TableCell>
+                                <TableCell align="right">Status</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {lowStockItems.map((item, index) => (
+                                <TableRow
+                                  key={index}
+                                  sx={{
+                                    "&:hover": {
+                                      backgroundColor: alpha("#f15a22", 0.05),
+                                    },
+                                    backgroundColor: item.stock <= 3 ? alpha("#e74c3c", 0.05) : "inherit",
+                                  }}
+                                >
+                                  <TableCell>{item.name}</TableCell>
+                                  <TableCell>{item.category}</TableCell>
+                                  <TableCell align="right">{item.stock}</TableCell>
+                                  <TableCell align="right">${(item.price || 0).toFixed(2)}</TableCell>
+                                  <TableCell align="right">${(item.value || 0).toFixed(2)}</TableCell>
+                                  <TableCell align="right">
+                                    <Chip
+                                      size="small"
+                                      label={item.stock <= 3 ? "Critical" : "Low"}
+                                      color={item.stock <= 3 ? "error" : "warning"}
+                                      sx={{ fontWeight: 500 }}
+                                    />
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                        <Box
+                          sx={{
+                            p: 2,
+                            borderTop: "1px solid rgba(0, 0, 0, 0.05)",
+                            textAlign: "right",
+                          }}
+                        >
+                          <Button variant="contained" color="primary" size="small" startIcon={<Refresh />}>
+                            Generate Purchase Orders
+                          </Button>
+                        </Box>
+                      </Card>
+                    </Grid>
+                  </Grid>
+                )}
+
+                <Divider />
+
+                {/* Raw Materials Analytics */}
+                <Typography variant="h6" gutterBottom sx={{ mt: 4, mb: 3, display: "flex", alignItems: "center" }}>
+                  <Inventory sx={{ mr: 1, color: theme.palette.primary.main }} />
+                  Raw Materials Analytics
+                </Typography>
+
+                {bomData?.length === 0 ? (
+                  <EmptyState message="No BOM data available to display." />
+                ) : (
+                  <Grid container spacing={3}>
+                    <Grid item xs={12} md={6}>
+                      <EnhancedBarChart
+                        title="Top Raw Materials by Usage"
+                        subtitle="Most frequently used ingredients"
+                        data={rawMaterialsData}
+                        xKey="name"
+                        yKeys={["totalUsage", "productCount"]}
+                        height={400}
+                        formatter={(value, name) =>
+                          name === "totalUsage"
+                            ? `${value} ${rawMaterialsData[0]?.unit || "units"}`
+                            : `${value} products`
+                        }
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} md={6}>
+                      <EnhancedScatterChart
+                        title="Raw Materials Analysis"
+                        subtitle="Usage frequency vs. product count"
+                        data={rawMaterialsData}
+                        xKey="totalUsage"
+                        yKey="productCount"
+                        zKey="id"
+                        height={400}
+                        formatter={(value, name) =>
+                          name === "totalUsage"
+                            ? `${value} ${rawMaterialsData[0]?.unit || "units"}`
+                            : `${value} products`
+                        }
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12}>
+                      <EnhancedTable
+                        title="Raw Materials Inventory"
+                        subtitle="Complete list of raw materials and their usage"
+                        columns={[
+                          { key: "RawID", label: "ID" },
+                          {
+                            key: "Name",
+                            label: "Material Name",
+                            render: (value, row) => value || row.name || "Unknown Material",
+                          },
+                          {
+                            key: "Quantity",
+                            label: "Available Quantity",
+                            align: "right",
+                            render: (value, row) => `${value || 0} ${row.UnitMeasure || ""}`,
+                          },
+                          {
+                            key: "UnitCost",
+                            label: "Unit Cost",
+                            align: "right",
+                            render: (value) => `$${(value || 0).toFixed(2)}`,
+                          },
+                          {
+                            key: "TotalValue",
+                            label: "Total Value",
+                            align: "right",
+                            render: (_, row) => `$${((row.Quantity || 0) * (row.UnitCost || 0)).toFixed(2)}`,
+                          },
+                          {
+                            key: "MinimumStock",
+                            label: "Min. Stock",
+                            align: "right",
+                          },
+                          {
+                            key: "StockStatus",
+                            label: "Status",
+                            render: (_, row) => (
+                              <StatusBadge
+                                status={
+                                  (row.Quantity || 0) <= (row.MinimumStock || 0)
+                                    ? "error"
+                                    : (row.Quantity || 0) <= (row.MinimumStock || 0) * 1.5
+                                      ? "warning"
+                                      : "success"
+                                }
+                                text={
+                                  (row.Quantity || 0) <= (row.MinimumStock || 0)
+                                    ? "Restock Required"
+                                    : (row.Quantity || 0) <= (row.MinimumStock || 0) * 1.5
+                                      ? "Low Stock"
+                                      : "Adequate"
+                                }
+                              />
+                            ),
+                          },
+                          {
+                            key: "LastRestocked",
+                            label: "Last Restocked",
+                            render: (value) => (value ? new Date(value).toLocaleDateString() : "N/A"),
+                          },
+                        ]}
+                        data={bomData}
+                        height={400}
+                        pagination={true}
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+                  </Grid>
+                )}
+              </Box>
+            </TabPanel>
+
+            {/* Procurement Tab */}
+            <TabPanel value={value} index={3}>
+              <Box sx={{ px: 4, py: 3 }}>
+                <SectionHeader
+                  title="Procurement Analytics"
+                  subtitle="Analyze purchase orders, vendor relationships, and supply chain metrics"
+                  icon={<LocalShipping />}
+                  actions={
+                    <Button variant="outlined" color="primary" startIcon={<Download />}>
+                      Export Report
+                    </Button>
+                  }
+                />
+
+                {/* Summary Cards */}
+                <Grid container spacing={3} sx={{ mb: 4 }}>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <StatisticCard
+                      title="Total Spend"
+                      value={`$${totalAmount.toFixed(2)}`}
+                      change={3.7}
+                      icon={<AttachMoney sx={{ color: "#fff" }} />}
+                      color="primary"
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} sm={6} md={3}>
+                    <MetricCard
+                      title="Purchase Orders"
+                      value={totalOrders}
+                      change={8.4}
+                      icon={<ReceiptLong />}
+                      color="info"
+                      subtitle={`Avg. value: $${averageOrderValue.toFixed(2)}`}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} sm={6} md={3}>
+                    <MetricCard
+                      title="Vendors"
+                      value={totalVendors}
+                      change={2.1}
+                      icon={<LocalShipping />}
+                      color="success"
+                      subtitle={`${activeVendors} active, ${totalVendors - activeVendors} inactive`}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} sm={6} md={3}>
+                    <MetricCard
+                      title="Products Sourced"
+                      value={totalProducts}
+                      change={5.2}
+                      icon={<Inventory />}
+                      color="warning"
+                      subtitle={`${averageProductsPerVendor.toFixed(1)} products per vendor`}
+                    />
+                  </Grid>
+                </Grid>
+
+                <Divider />
+
+                {/* Purchase Order Analytics */}
+                <Typography variant="h6" gutterBottom sx={{ mt: 4, mb: 3, display: "flex", alignItems: "center" }}>
+                  <ReceiptLong sx={{ mr: 1, color: theme.palette.primary.main }} />
+                  Purchase Order Analytics
+                </Typography>
+
+                {purchaseOrders.length === 0 ? (
+                  <EmptyState message="No purchase order data available to display." />
+                ) : (
+                  <Grid container spacing={3}>
+                    <Grid item xs={12} md={6}>
+                      <EnhancedDonutChart
+                        title="Purchase Orders by Status"
+                        subtitle="Distribution of orders by current status"
+                        data={statusData}
+                        dataKey="value"
+                        nameKey="name"
+                        height={350}
+                        formatter={(value) => `${value} orders`}
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} md={6}>
+                      <EnhancedDonutChart
+                        title="Purchase Orders by Confirmation"
+                        subtitle="Distribution of orders by confirmation status"
+                        data={confirmationData}
+                        dataKey="value"
+                        nameKey="name"
+                        height={350}
+                        formatter={(value) => `${value} orders`}
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} lg={8}>
+                      <EnhancedComposedChart
+                        title="Purchase Order Timeline"
+                        subtitle="Order count and value over time"
+                        data={orderTimeline}
+                        xKey="monthYear"
+                        barKeys={["amount"]}
+                        lineKeys={["count"]}
+                        height={400}
+                        formatter={(value, name) => (name === "amount" ? `$${value.toFixed(2)}` : `${value} orders`)}
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} md={6} lg={4}>
+                      <EnhancedBarChart
+                        title="Orders by Payment Terms"
+                        subtitle="Distribution of orders by payment terms"
+                        data={ordersByPaymentTerms}
+                        xKey="name"
+                        yKeys={["count"]}
+                        height={400}
+                        formatter={(value) => `${value} orders`}
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12}>
+                      <EnhancedTable
+                        title="Top Vendors by Spend"
+                        subtitle="Vendors with highest procurement value"
+                        columns={[
+                          { key: "vendorName", label: "Vendor Name" },
+                          {
+                            key: "orderCount",
+                            label: "Orders",
+                            align: "right",
+                          },
+                          {
+                            key: "totalAmount",
+                            label: "Total Spend",
+                            align: "right",
+                            render: (value) => `$${value.toFixed(2)}`,
+                          },
+                          {
+                            key: "avgOrderValue",
+                            label: "Avg. Order Value",
+                            align: "right",
+                            render: (_, row) => `$${(row.totalAmount / row.orderCount).toFixed(2)}`,
+                          },
+                          {
+                            key: "percentOfTotal",
+                            label: "% of Total Spend",
+                            align: "right",
+                            render: (_, row) => {
+                              const percent = (row.totalAmount / totalAmount) * 100
+                              return (
+                                <Box sx={{ display: "flex", alignItems: "center" }}>
+                                  <Box sx={{ width: "60%", mr: 1 }}>
+                                    <LinearProgress
+                                      variant="determinate"
+                                      value={percent}
+                                      sx={{
+                                        height: 8,
+                                        borderRadius: 4,
+                                        backgroundColor: alpha(theme.palette.primary.main, 0.2),
+                                        "& .MuiLinearProgress-bar": {
+                                          backgroundColor: theme.palette.primary.main,
+                                        },
+                                      }}
+                                    />
+                                  </Box>
+                                  <Typography variant="body2">{percent.toFixed(1)}%</Typography>
+                                </Box>
+                              )
+                            },
+                          },
+                        ]}
+                        data={topVendors}
+                        height={350}
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+                  </Grid>
+                )}
+
+                <Divider />
+
+                {/* Vendor Analytics */}
+                <Typography variant="h6" gutterBottom sx={{ mt: 4, mb: 3, display: "flex", alignItems: "center" }}>
+                  <LocalShipping sx={{ mr: 1, color: theme.palette.primary.main }} />
+                  Vendor Analytics
+                </Typography>
+
+                {vendors.length === 0 ? (
+                  <EmptyState message="No vendor data available to display." />
+                ) : (
+                  (
+                    <Grid container spacing={3}>
+                    <Grid item xs={12} md={6}>
+                      <EnhancedPieChart
+                        title="Vendors by City"
+                        subtitle="Geographic distribution of vendors"
+                        data={vendorsByCity}
+                        dataKey="value"
+                        nameKey="name"
+                        height={350}
+                        formatter={(value) => `${value} vendors`}
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} md={6}>
+                      <EnhancedBarChart
+                        title="Vendor Ratings Distribution"
+                        subtitle="Vendors grouped by performance rating"
+                        data={vendorRatings}
+                        xKey="rating"
+                        yKeys={["count"]}
+                        height={350}
+                        formatter={(value) => `${value} vendors`}
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} lg={8}>
+                      <EnhancedTreemap
+                        title="Product Distribution by Vendor"
+                        subtitle="Visual representation of product value by vendor"
+                        data={productDistribution}
+                        dataKey="totalValue"
+                        nameKey="name"
+                        height={400}
+                        formatter={(value) => `$${value.toFixed(2)}`}
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} md={6} lg={4}>
+                      <Card sx={{ p: 3, height: "100%" }}>
+                        <Typography variant="subtitle1" sx={{ mb: 3, fontWeight: 600 }}>
+                          Vendor Performance Metrics
+                        </Typography>
+
+                        <Box
+                          sx={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 2,
+                          }}
+                        >
+                          <KPIIndicator
+                            title="Active Vendor Rate"
+                            value={((activeVendors / totalVendors) * 100).toFixed(1)}
+                            unit="%"
+                            target={90}
+                            status={((activeVendors / totalVendors) * 100) > 85 ? "success" : "warning"}
+                            icon={<CheckCircle />}
+                          />
+
+                          <KPIIndicator
+                            title="Avg. Products per Vendor"
+                            value={averageProductsPerVendor.toFixed(1)}
+                            unit=""
+                            target={10}
+                            status={(averageProductsPerVendor > 8 ? "success" : "warning")}
+                            icon={<Inventory />}
+                          />
+
+                          <KPIIndicator
+                            title="Avg. Vendor Rating"
+                            value={(
+                              vendorRatings.reduce((sum, rating) => sum + rating.rating * rating.count, 0) /
+                              vendorRatings.reduce((sum, rating) => sum + rating.count, 0)
+                            ).toFixed(1)}
+                            unit="/5"
+                            target={4}
+                            status={
+                              ((vendorRatings.reduce((sum, rating) => sum + rating.rating * rating.count, 0) /
+                                vendorRatings.reduce((sum, rating) => sum + rating.count, 0)) >
+                              3.5
+                                ? "success"
+                                : "warning")
+                            }
+                            icon={<Star />}
+                          />
+
+                          <KPIIndicator
+                            title="Vendor Concentration"
+                            value={(((topVendors[0]?.totalAmount / totalAmount) * 100) || 0).toFixed(1)}
+                            unit="%"
+                            target={30}
+                            status={
+                              (((topVendors[0]?.totalAmount / totalAmount) * 100) || 0) < 35 ? "success" : "warning"
+                            }
+                            icon={<PieChartIcon />}
+                          />
+                        </Box>
+                      </Card>
+                    </Grid>
+
+                    <Grid item xs={12}>
+                      <EnhancedTable
+                        title="Vendor Details"
+                        subtitle="Complete information about all vendors"
+                        columns={[
+                          { 
+                            key: "vendorName", 
+                            label: "Vendor Name",
+                            render: (value, row) => value || row.name || "Unknown Vendor" 
+                          },
+                          { 
+                            key: "city", 
+                            label: "City",
+                            render: (value) => value || "Unknown Location"
+                          },
+                          { 
+                            key: "phone", 
+                            label: "Contact",
+                            render: (value) => value || "No Contact Info"
+                          },
+                          {
+                            key: "productList",
+                            label: "Products",
+                            align: "right",
+                            render: (value) => (value?.length || 0),
+                          },
+                          {
+                            key: "totalValue",
+                            label: "Inventory Value",
+                            align: "right",
+                            render: (_, row) =>
+                              `$${(
+                                row.productList?.reduce((sum, product) => sum + product.price * product.quantity, 0) ||
+                                  0
+                              ).toFixed(2)}`,
+                          },
+                          {
+                            key: "rating",
+                            label: "Rating",
+                            align: "center",
+                            render: (value) => (
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                }}
+                              >
+                                {Array(5)
+                                  .fill(0)
+                                  .map((_, i) => (
+                                    <Star
+                                      key={i}
+                                      fontSize="small"
+                                      sx={{
+                                        color:
+                                          i < value
+                                            ? theme.palette.warning.main
+                                            : alpha(theme.palette.warning.main, 0.3),
+                                      }}
+                                    />
+                                  ))}
+                              </Box>
+                            ),
+                          },
+                          {
+                            key: "isActive",
+                            label: "Status",
+                            render: (value) => (
+                              <StatusBadge
+                                status={(value ? "active" : "inactive")}
+                                text={(value ? "Active" : "Inactive")}
+                              />
+                            ),
+                          },
+                        ]}
+                        data={vendors}
+                        height={400}
+                        pagination={true}
+                        actions={commonChartActions}
+                      />
+                    </Grid>
+                  </Grid>
+                  )
+                )}
+              </Box>
+            </TabPanel>
+          </Paper>
+        </Box>
       </MainContentWrapper>
     </ThemeProvider>
   )

@@ -45,7 +45,7 @@ import ProductPricing from "./pages/Product Information and Configuration/Produc
 import InventoryManagement from "./pages/Inventory Management/InventoryManagement";
 import StockManagement from "./pages/Inventory Management/Stock Management/StockManagement";
 import WarehouseManagement from "./pages/Inventory Management/Warehouse Management/WarehouseManagement";
-import ReportAnalytics from "./pages/Report and Analytics/ReportAnalytics";
+import ReportsAnalytics from "./pages/Report and Analytics/ReportAnalytics";
 
 function App() {
   // ------------ Authentication ------------
@@ -462,9 +462,13 @@ function App() {
           {/* ------------ Reports and Analytics ------------ */}
 
           <Route
-            path="/ReportsAnalytics/"
+            path="/ReportsAnalytics"
             element={
-              isAuthenticated ? <ReportAnalytics /> : <Navigate to="/login" />
+              isAuthenticated ? (
+                <ReportsAnalytics user={user} />
+              ) : (
+                <Navigate to="/login" />
+              )
             }
           />
 
