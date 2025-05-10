@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import {
   Box,
   Paper,
@@ -26,6 +26,8 @@ import {
   IconButton,
   Badge,
   Button,
+  Snackbar,
+  Alert,
 } from "@mui/material"
 import {
   PointOfSale,
@@ -84,384 +86,1459 @@ import {
 } from "recharts"
 import MainContentWrapper from "./MainContentWrapper"
 import { createTheme, ThemeProvider } from "@mui/material/styles"
+import html2canvas from "html2canvas"
+import jsPDF from "jspdf"
+import { saveAs } from "file-saver"
+import * as XLSX from "xlsx"
 
-// Custom theme with the specified color
-const customTheme = createTheme({
-  palette: {
-    primary: {
-      main: "#f15a22",
-      light: alpha("#f15a22", 0.7),
-      dark: alpha("#f15a22", 0.9),
+const ReportAnalytics = () => {
+  const systemTheme = useTheme() // Get the current system theme
+
+  // Create custom theme that extends the current theme
+  const customTheme = createTheme({
+    palette: {
+      mode: systemTheme.palette.mode, // Use the current system theme mode
+      primary: {
+        main: "#f15a22",
+        light: alpha("#f15a22", 0.7),
+        dark: alpha("#f15a22", 0.9),
+      },
+      secondary: {
+        main: "#2c3e50",
+        light: alpha("#2c3e50", 0.7),
+        dark: alpha("#2c3e50", 0.9),
+      },
+      background: {
+        default: "#f8f9fa",
+        paper: "#ffffff",
+      },
+      success: {
+        main: "#2ecc71",
+        light: alpha("#2ecc71", 0.7),
+        dark: alpha("#2ecc71", 0.9),
+      },
+      warning: {
+        main: "#f39c12",
+        light: alpha("#f39c12", 0.7),
+        dark: alpha("#f39c12", 0.9),
+      },
+      error: {
+        main: "#e74c3c",
+        light: alpha("#e74c3c", 0.7),
+        dark: alpha("#e74c3c", 0.9),
+      },
+      info: {
+        main: "#3498db",
+        light: alpha("#3498db", 0.7),
+        dark: alpha("#3498db", 0.9),
+      },
+      text: {
+        primary: "#2c3e50",
+        secondary: "#7f8c8d",
+      },
     },
-    secondary: {
-      main: "#2c3e50",
-      light: alpha("#2c3e50", 0.7),
-      dark: alpha("#2c3e50", 0.9),
+    typography: {
+      fontFamily: "'Poppins', 'Roboto', 'Helvetica', 'Arial', sans-serif",
+      h4: {
+        fontWeight: 700,
+        color: "#2c3e50",
+        fontSize: "1.75rem",
+      },
+      h5: {
+        fontWeight: 600,
+        color: "#2c3e50",
+        fontSize: "1.5rem",
+      },
+      h6: {
+        fontWeight: 600,
+        color: "#2c3e50",
+        fontSize: "1.25rem",
+      },
+      subtitle1: {
+        fontWeight: 500,
+        color: "#2c3e50",
+        fontSize: "1rem",
+      },
+      subtitle2: {
+        fontWeight: 500,
+        color: "#7f8c8d",
+        fontSize: "0.875rem",
+      },
+      body1: {
+        color: "#2c3e50",
+      },
+      body2: {
+        color: "#7f8c8d",
+      },
     },
-    background: {
-      default: "#f8f9fa",
-      paper: "#ffffff",
-    },
-    success: {
-      main: "#2ecc71",
-      light: alpha("#2ecc71", 0.7),
-      dark: alpha("#2ecc71", 0.9),
-    },
-    warning: {
-      main: "#f39c12",
-      light: alpha("#f39c12", 0.7),
-      dark: alpha("#f39c12", 0.9),
-    },
-    error: {
-      main: "#e74c3c",
-      light: alpha("#e74c3c", 0.7),
-      dark: alpha("#e74c3c", 0.9),
-    },
-    info: {
-      main: "#3498db",
-      light: alpha("#3498db", 0.7),
-      dark: alpha("#3498db", 0.9),
-    },
-  },
-  typography: {
-    fontFamily: "'Poppins', 'Roboto', 'Helvetica', 'Arial', sans-serif",
-    h4: {
-      fontWeight: 700,
-      color: "#2c3e50",
-      fontSize: "1.75rem",
-    },
-    h5: {
-      fontWeight: 600,
-      color: "#2c3e50",
-      fontSize: "1.5rem",
-    },
-    h6: {
-      fontWeight: 600,
-      color: "#2c3e50",
-      fontSize: "1.25rem",
-    },
-    subtitle1: {
-      fontWeight: 500,
-      color: "#2c3e50",
-      fontSize: "1rem",
-    },
-    subtitle2: {
-      fontWeight: 500,
-      color: "#7f8c8d",
-      fontSize: "0.875rem",
-    },
-    body1: {
-      color: "#2c3e50",
-    },
-    body2: {
-      color: "#7f8c8d",
-    },
-  },
-  components: {
-    MuiCard: {
-      styleOverrides: {
-        root: {
-          borderRadius: 12,
-          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.05)",
-          transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
-          "&:hover": {
-            transform: "translateY(-4px)",
-            boxShadow: "0 8px 16px rgba(0, 0, 0, 0.1)",
+    components: {
+      MuiCard: {
+        styleOverrides: {
+          root: {
+            borderRadius: 12,
+            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.05)",
+            transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+            "&:hover": {
+              transform: "translateY(-4px)",
+              boxShadow: "0 8px 16px rgba(0, 0, 0, 0.1)",
+            },
           },
         },
       },
-    },
-    MuiPaper: {
-      styleOverrides: {
-        root: {
-          borderRadius: 12,
+      MuiPaper: {
+        styleOverrides: {
+          root: {
+            borderRadius: 12,
+          },
         },
       },
-    },
-    MuiTab: {
-      styleOverrides: {
-        root: {
-          textTransform: "none",
-          fontWeight: 500,
-          minWidth: 120,
-          "&.Mui-selected": {
+      MuiTab: {
+        styleOverrides: {
+          root: {
+            textTransform: "none",
+            fontWeight: 500,
+            minWidth: 120,
+            "&.Mui-selected": {
+              color: "#f15a22",
+            },
+          },
+        },
+      },
+      MuiChip: {
+        styleOverrides: {
+          root: {
+            fontWeight: 500,
+          },
+          colorPrimary: {
+            backgroundColor: alpha("#f15a22", 0.1),
+            color: "#f15a22",
+          },
+        },
+      },
+      MuiButton: {
+        styleOverrides: {
+          root: {
+            textTransform: "none",
+            fontWeight: 500,
+            borderRadius: 8,
+          },
+          containedPrimary: {
+            backgroundColor: "#f15a22",
+            "&:hover": {
+              backgroundColor: alpha("#f15a22", 0.9),
+            },
+          },
+          outlinedPrimary: {
+            borderColor: "#f15a22",
+            color: "#f15a22",
+            "&:hover": {
+              backgroundColor: alpha("#f15a22", 0.05),
+            },
+          },
+        },
+      },
+      MuiTableCell: {
+        styleOverrides: {
+          head: {
+            fontWeight: 600,
+            backgroundColor: alpha("#f15a22", 0.05),
+            color: "#2c3e50",
+          },
+        },
+      },
+      MuiDivider: {
+        styleOverrides: {
+          root: {
+            margin: "24px 0",
+          },
+        },
+      },
+      MuiLinearProgress: {
+        styleOverrides: {
+          colorPrimary: {
+            backgroundColor: alpha("#f15a22", 0.2),
+          },
+          barColorPrimary: {
+            backgroundColor: "#f15a22",
+          },
+        },
+      },
+      MuiCircularProgress: {
+        styleOverrides: {
+          colorPrimary: {
             color: "#f15a22",
           },
         },
       },
     },
-    MuiChip: {
-      styleOverrides: {
-        root: {
-          fontWeight: 500,
-        },
-        colorPrimary: {
-          backgroundColor: alpha("#f15a22", 0.1),
-          color: "#f15a22",
-        },
-      },
-    },
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          textTransform: "none",
-          fontWeight: 500,
-          borderRadius: 8,
-        },
-        containedPrimary: {
-          backgroundColor: "#f15a22",
-          "&:hover": {
-            backgroundColor: alpha("#f15a22", 0.9),
-          },
-        },
-        outlinedPrimary: {
-          borderColor: "#f15a22",
-          color: "#f15a22",
-          "&:hover": {
-            backgroundColor: alpha("#f15a22", 0.05),
-          },
-        },
-      },
-    },
-    MuiTableCell: {
-      styleOverrides: {
-        head: {
-          fontWeight: 600,
-          backgroundColor: alpha("#f15a22", 0.05),
-          color: "#2c3e50",
-        },
-      },
-    },
-    MuiDivider: {
-      styleOverrides: {
-        root: {
-          margin: "24px 0",
-        },
-      },
-    },
-    MuiLinearProgress: {
-      styleOverrides: {
-        colorPrimary: {
-          backgroundColor: alpha("#f15a22", 0.2),
-        },
-        barColorPrimary: {
-          backgroundColor: "#f15a22",
-        },
-      },
-    },
-    MuiCircularProgress: {
-      styleOverrides: {
-        colorPrimary: {
-          color: "#f15a22",
-        },
-      },
-    },
-  },
-})
+  })
 
-// Custom chart theme
-const chartTheme = {
-  colors: {
-    primary: "#f15a22",
-    secondary: "#2c3e50",
-    success: "#2ecc71",
-    warning: "#f39c12",
-    error: "#e74c3c",
-    info: "#3498db",
-    purple: "#9b59b6",
-    teal: "#1abc9c",
-    pink: "#e84393",
-    indigo: "#6c5ce7",
-  },
-  gradients: {
-    primary: ["#f15a22", "#ff7e47"],
-    secondary: ["#2c3e50", "#4a6b8a"],
-    success: ["#2ecc71", "#55e992"],
-    warning: ["#f39c12", "#ffbe45"],
-    error: ["#e74c3c", "#ff7768"],
-    info: ["#3498db", "#5dade2"],
-  },
-}
+  // Custom chart theme with dark mode support
+  const chartTheme = useMemo(
+    () => ({
+      colors: {
+        primary: "#f15a22",
+        secondary: "#2c3e50",
+        success: "#2ecc71",
+        warning: "#f39c12",
+        error: "#e74c3c",
+        info: "#3498db",
+        purple: "#9b59b6",
+        teal: "#1abc9c",
+        pink: "#e84393",
+        indigo: "#6c5ce7",
+      },
+      gradients: {
+        primary: ["#f15a22", "#ff7e47"],
+        secondary: ["#2c3e50", "#4a6b8a"],
+        success: ["#2ecc71", "#55e992"],
+        warning: ["#f39c12", "#ffbe45"],
+        error: ["#e74c3c", "#ff7768"],
+        info: ["#3498db", "#5dade2"],
+      },
+      darkMode: systemTheme.palette.mode === "dark", // Use the current theme mode
+    }),
+    [systemTheme.palette.mode],
+  )
 
-// Enhanced Card component with gradient background
-const GradientCard = ({ children, gradient = "primary", sx = {} }) => {
-  const theme = useTheme()
+  // Enhanced Card component with gradient background
+  const GradientCard = ({ children, gradient = "primary", sx = {} }) => {
+    const theme = useTheme()
 
-  const getGradient = (gradientName) => {
-    const colors = chartTheme.gradients[gradientName] || chartTheme.gradients.primary
-    return `linear-gradient(135deg, ${colors[0]} 0%, ${colors[1]} 100%)`
+    const getGradient = (gradientName) => {
+      const colors = chartTheme.gradients[gradientName] || chartTheme.gradients.primary
+      return `linear-gradient(135deg, ${colors[0]} 0%, ${colors[1]} 100%)`
+    }
+
+    return (
+      <Card
+        sx={{
+          background: getGradient(gradient),
+          color: "#fff",
+          ...sx,
+        }}
+      >
+        {children}
+      </Card>
+    )
   }
 
-  return (
-    <Card
-      sx={{
-        background: getGradient(gradient),
-        color: "#fff",
-        ...sx,
-      }}
-    >
-      {children}
-    </Card>
-  )
-}
+  // Enhanced Statistic Card component
+  const StatisticCard = ({
+    title,
+    value,
+    icon,
+    subtitle,
+    change,
+    changeType = "percent",
+    color = "primary",
+    footer,
+    sx = {},
+  }) => {
+    const isPositive = change > 0
+    const changeIcon = isPositive ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />
 
-// Enhanced Statistic Card component
-const StatisticCard = ({
-  title,
-  value,
-  icon,
-  subtitle,
-  change,
-  changeType = "percent",
-  color = "primary",
-  footer,
-  sx = {},
-}) => {
-  const isPositive = change > 0
-  const changeIcon = isPositive ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />
-
-  return (
-    <GradientCard gradient={color} sx={sx}>
-      <CardContent sx={{ p: 3 }}>
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-          }}
-        >
-          <Box>
-            <Typography variant="subtitle2" sx={{ color: "#fff", opacity: 0.9, mb: 1 }}>
-              {title}
-            </Typography>
-            <Typography variant="h4" sx={{ mt: 1, fontWeight: 700, color: "#fff" }}>
-              {value}
-            </Typography>
-            {change !== undefined && (
-              <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: isPositive ? "#ffffff" : "#ffffff",
-                    opacity: 0.9,
-                    display: "flex",
-                    alignItems: "center",
-                    fontWeight: 500,
-                  }}
-                >
-                  {isPositive ? "+" : ""}
-                  {change}
-                  {changeType === "percent" ? "%" : ""}
-                  {changeIcon}
+    return (
+      <GradientCard gradient={color} sx={sx}>
+        <CardContent sx={{ p: 3 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+            }}
+          >
+            <Box>
+              <Typography variant="subtitle2" sx={{ color: "#fff", opacity: 0.9, mb: 1 }}>
+                {title}
+              </Typography>
+              <Typography variant="h4" sx={{ mt: 1, fontWeight: 700, color: "#fff" }}>
+                {value}
+              </Typography>
+              {change !== undefined && (
+                <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: isPositive ? "#ffffff" : "#ffffff",
+                      opacity: 0.9,
+                      display: "flex",
+                      alignItems: "center",
+                      fontWeight: 500,
+                    }}
+                  >
+                    {isPositive ? "+" : ""}
+                    {change}
+                    {changeType === "percent" ? "%" : ""}
+                    {changeIcon}
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: "#ffffff", opacity: 0.7, ml: 1 }}>
+                    vs last period
+                  </Typography>
+                </Box>
+              )}
+              {subtitle && (
+                <Typography variant="body2" sx={{ mt: 1, opacity: 0.8, color: "#fff" }}>
+                  {subtitle}
                 </Typography>
-                <Typography variant="body2" sx={{ color: "#ffffff", opacity: 0.7, ml: 1 }}>
-                  vs last period
-                </Typography>
+              )}
+            </Box>
+            {icon && (
+              <Box
+                sx={{
+                  backgroundColor: "rgba(255, 255, 255, 0.2)",
+                  borderRadius: "50%",
+                  p: 1.5,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {icon}
               </Box>
             )}
-            {subtitle && (
-              <Typography variant="body2" sx={{ mt: 1, opacity: 0.8, color: "#fff" }}>
-                {subtitle}
-              </Typography>
-            )}
           </Box>
-          {icon && (
+          {footer && (
             <Box
               sx={{
-                backgroundColor: "rgba(255, 255, 255, 0.2)",
-                borderRadius: "50%",
-                p: 1.5,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                mt: 2,
+                pt: 2,
+                borderTop: "1px solid rgba(255, 255, 255, 0.2)",
               }}
             >
-              {icon}
+              {footer}
             </Box>
           )}
-        </Box>
+        </CardContent>
+      </GradientCard>
+    )
+  }
+
+  // Enhanced metric card with theme-aware background
+  const MetricCard = ({ title, value, change, icon, color = "primary", subtitle, footer, sx = {} }) => {
+    const theme = useTheme()
+    const isPositive = change > 0
+    const isDarkMode = theme.palette.mode === "dark"
+
+    return (
+      <Card
+        sx={{
+          p: 0,
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          ...sx,
+        }}
+      >
+        <CardContent sx={{ p: 3, flex: 1 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+            }}
+          >
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                {title}
+              </Typography>
+              <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
+                {value}
+              </Typography>
+              {change !== undefined && (
+                <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: isPositive ? theme.palette.success.main : theme.palette.error.main,
+                      display: "flex",
+                      alignItems: "center",
+                      fontWeight: 500,
+                    }}
+                  >
+                    {isPositive ? "+" : ""}
+                    {change}%
+                    {isPositive ? (
+                      <ArrowUpward fontSize="small" sx={{ ml: 0.5 }} />
+                    ) : (
+                      <ArrowDownward fontSize="small" sx={{ ml: 0.5 }} />
+                    )}
+                  </Typography>
+                  <Typography variant="body2" sx={{ ml: 1 }}>
+                    vs last period
+                  </Typography>
+                </Box>
+              )}
+              {subtitle && (
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  {subtitle}
+                </Typography>
+              )}
+            </Box>
+            {icon && (
+              <Box
+                sx={{
+                  backgroundColor: alpha(theme.palette[color].main, isDarkMode ? 0.2 : 0.1),
+                  borderRadius: "50%",
+                  p: 1.5,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  "& .MuiSvgIcon-root": {
+                    color: theme.palette[color].main,
+                  },
+                }}
+              >
+                {icon}
+              </Box>
+            )}
+          </Box>
+        </CardContent>
         {footer && (
           <Box
             sx={{
-              mt: 2,
-              pt: 2,
-              borderTop: "1px solid rgba(255, 255, 255, 0.2)",
+              p: 2,
+              pt: 0,
+              borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+              backgroundColor: isDarkMode
+                ? alpha(theme.palette.background.default, 0.3)
+                : alpha(theme.palette.background.default, 0.5),
             }}
           >
             {footer}
           </Box>
         )}
-      </CardContent>
-    </GradientCard>
-  )
-}
+      </Card>
+    )
+  }
 
-// Enhanced metric card with white background
-const MetricCard = ({ title, value, change, icon, color = "primary", subtitle, footer, sx = {} }) => {
-  const theme = useTheme()
-  const isPositive = change > 0
+  // TabPanel component to handle tab content
+  function TabPanel(props) {
+    const { children, value, index, ...other } = props
 
-  return (
-    <Card
+    return (
+      <div
+        role="tabpanel"
+        hidden={value !== index}
+        id={`analytics-tabpanel-${index}`}
+        aria-labelledby={`analytics-tab-${index}`}
+        {...other}
+      >
+        {value === index && <Box>{children}</Box>}
+      </div>
+    )
+  }
+
+  function a11yProps(index) {
+    return {
+      id: `analytics-tab-${index}`,
+      "aria-controls": `analytics-tabpanel-${index}`,
+    }
+  }
+
+  // Enhanced chart components
+  const ChartContainer = ({ title, subtitle, children, height = 300, actions, sx = {} }) => {
+    const theme = useTheme()
+    const isDarkMode = theme.palette.mode === "dark"
+
+    return (
+      <Paper
+        elevation={2}
+        sx={{
+          p: 0,
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          "&:hover": {
+            boxShadow: isDarkMode ? "0 8px 16px rgba(0, 0, 0, 0.4)" : "0 8px 16px rgba(0, 0, 0, 0.1)",
+          },
+          ...sx,
+        }}
+      >
+        <Box
+          sx={{
+            p: 3,
+            pb: 2,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            borderBottom: isDarkMode ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(0, 0, 0, 0.05)",
+          }}
+        >
+          <Box>
+            <Typography
+              variant="subtitle1"
+              sx={{
+                fontWeight: 600,
+              }}
+            >
+              {title}
+            </Typography>
+            {subtitle && (
+              <Typography
+                variant="body2"
+                sx={{
+                  mt: 0.5,
+                }}
+              >
+                {subtitle}
+              </Typography>
+            )}
+          </Box>
+          {actions && <Box sx={{ display: "flex", gap: 1 }}>{actions}</Box>}
+        </Box>
+        <Box sx={{ flex: 1, minHeight: height, p: 2 }}>{children}</Box>
+      </Paper>
+    )
+  }
+
+  // Enhanced tooltip component
+  const CustomTooltip = ({ active, payload, label, formatter, title }) => {
+    const theme = useTheme()
+    const isDarkMode = theme.palette.mode === "dark"
+
+    if (active && payload && payload.length) {
+      return (
+        <Paper
+          elevation={3}
+          sx={{
+            p: 2,
+            backgroundColor: isDarkMode ? "rgba(30, 30, 30, 0.95)" : "rgba(255, 255, 255, 0.95)",
+            border: `1px solid ${isDarkMode ? "#333" : "#eee"}`,
+            boxShadow: isDarkMode ? "0 4px 12px rgba(0, 0, 0, 0.3)" : "0 4px 12px rgba(0, 0, 0, 0.1)",
+            maxWidth: 300,
+          }}
+        >
+          <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+            {title || label}
+          </Typography>
+          {payload.map((entry, index) => (
+            <Box
+              key={index}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                mb: 0.5,
+              }}
+            >
+              <Box
+                sx={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: "50%",
+                  backgroundColor: entry.color,
+                }}
+              />
+              <Typography variant="body2">
+                {entry.name}: {formatter ? formatter(entry.value, entry.name) : entry.value}
+              </Typography>
+            </Box>
+          ))}
+        </Paper>
+      )
+    }
+    return null
+  }
+
+  // Enhanced chart components
+  const EnhancedLineChart = ({ data, xKey, yKeys, title, subtitle, height = 300, formatter, actions }) => {
+    const theme = useTheme()
+    const isDarkMode = theme.palette.mode === "dark"
+
+    return (
+      <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions}>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 10 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.darkMode ? "#333" : "#eee"} />
+            <XAxis
+              dataKey={xKey}
+              stroke={chartTheme.darkMode ? "#aaa" : "#2c3e50"}
+              tick={{ fill: chartTheme.darkMode ? "#aaa" : "#2c3e50" }}
+              tickLine={{ stroke: chartTheme.darkMode ? "#aaa" : "#2c3e50" }}
+              axisLine={{ stroke: chartTheme.darkMode ? "#aaa" : "#2c3e50" }}
+            />
+            <YAxis
+              stroke={chartTheme.darkMode ? "#aaa" : "#2c3e50"}
+              tick={{ fill: chartTheme.darkMode ? "#aaa" : "#2c3e50" }}
+              tickLine={{ stroke: chartTheme.darkMode ? "#aaa" : "#2c3e50" }}
+              axisLine={{ stroke: chartTheme.darkMode ? "#aaa" : "#2c3e50" }}
+            />
+            <RechartsTooltip
+              content={({ active, payload, label }) => (
+                <CustomTooltip
+                  active={active}
+                  payload={payload}
+                  label={label}
+                  formatter={formatter || ((value) => `$${value.toFixed(2)}`)}
+                />
+              )}
+            />
+            <Legend verticalAlign="bottom" height={36} iconType="circle" iconSize={10} />
+            {yKeys.map((key, index) => (
+              <Line
+                key={key}
+                type="monotone"
+                dataKey={key}
+                name={key}
+                stroke={Object.values(chartTheme.colors)[index % Object.keys(chartTheme.colors).length]}
+                strokeWidth={3}
+                dot={{ r: 4, strokeWidth: 2 }}
+                activeDot={{ r: 6, strokeWidth: 2 }}
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </ChartContainer>
+    )
+  }
+
+  const EnhancedAreaChart = ({
+    data,
+    xKey,
+    yKeys,
+    title,
+    subtitle,
+    height = 300,
+    formatter,
+    stacked = false,
+    actions,
+  }) => {
+    const theme = useTheme()
+    const isDarkMode = theme.palette.mode === "dark"
+
+    return (
+      <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions}>
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 10 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.darkMode ? "#333" : "#eee"} />
+            <XAxis
+              dataKey={xKey}
+              stroke={chartTheme.darkMode ? "#aaa" : "#2c3e50"}
+              tick={{ fill: chartTheme.darkMode ? "#aaa" : "#2c3e50" }}
+            />
+            <YAxis
+              stroke={chartTheme.darkMode ? "#aaa" : "#2c3e50"}
+              tick={{ fill: chartTheme.darkMode ? "#aaa" : "#2c3e50" }}
+            />
+            <RechartsTooltip
+              content={({ active, payload, label }) => (
+                <CustomTooltip
+                  active={active}
+                  payload={payload}
+                  label={label}
+                  formatter={formatter || ((value) => `$${value.toFixed(2)}`)}
+                />
+              )}
+            />
+            <Legend verticalAlign="bottom" height={36} iconType="circle" iconSize={10} />
+            {yKeys.map((key, index) => (
+              <Area
+                key={key}
+                type="monotone"
+                dataKey={key}
+                name={key}
+                stackId={stacked ? "1" : index}
+                stroke={Object.values(chartTheme.colors)[index % Object.keys(chartTheme.colors).length]}
+                fill={alpha(Object.values(chartTheme.colors)[index % Object.keys(chartTheme.colors).length], 0.5)}
+              />
+            ))}
+          </AreaChart>
+        </ResponsiveContainer>
+      </ChartContainer>
+    )
+  }
+
+  const EnhancedBarChart = ({
+    data,
+    xKey,
+    yKeys,
+    title,
+    subtitle,
+    height = 300,
+    formatter,
+    stacked = false,
+    actions,
+  }) => {
+    const theme = useTheme()
+    const isDarkMode = theme.palette.mode === "dark"
+
+    return (
+      <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 10 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.darkMode ? "#333" : "#eee"} />
+            <XAxis
+              dataKey={xKey}
+              stroke={chartTheme.darkMode ? "#aaa" : "#2c3e50"}
+              tick={{ fill: chartTheme.darkMode ? "#aaa" : "#2c3e50" }}
+            />
+            <YAxis
+              stroke={chartTheme.darkMode ? "#aaa" : "#2c3e50"}
+              tick={{ fill: chartTheme.darkMode ? "#aaa" : "#2c3e50" }}
+            />
+            <RechartsTooltip
+              content={({ active, payload, label }) => (
+                <CustomTooltip
+                  active={active}
+                  payload={payload}
+                  label={label}
+                  formatter={formatter || ((value) => `$${value.toFixed(2)}`)}
+                />
+              )}
+            />
+            <Legend verticalAlign="bottom" height={36} iconType="circle" iconSize={10} />
+            {yKeys.map((key, index) => (
+              <Bar
+                key={key}
+                dataKey={key}
+                name={key}
+                stackId={stacked ? "1" : undefined}
+                fill={Object.values(chartTheme.colors)[index % Object.keys(chartTheme.colors).length]}
+                radius={[4, 4, 0, 0]}
+              />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartContainer>
+    )
+  }
+
+  const EnhancedPieChart = ({ data, dataKey, nameKey, title, subtitle, height = 300, formatter, actions }) => {
+    const theme = useTheme()
+    const isDarkMode = theme.palette.mode === "dark"
+
+    return (
+      <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions}>
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              labelLine={false}
+              outerRadius={80}
+              innerRadius={0}
+              fill="#8884d8"
+              dataKey={dataKey}
+              nameKey={nameKey}
+              label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+            >
+              {data.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={Object.values(chartTheme.colors)[index % Object.keys(chartTheme.colors).length]}
+                />
+              ))}
+            </Pie>
+            <RechartsTooltip
+              content={({ active, payload }) => (
+                <CustomTooltip
+                  active={active}
+                  payload={payload}
+                  formatter={formatter || ((value) => `${value} items`)}
+                />
+              )}
+            />
+            <Legend
+              verticalAlign="bottom"
+              height={36}
+              iconType="circle"
+              iconSize={10}
+              layout="horizontal"
+              align="center"
+            />
+          </PieChart>
+        </ResponsiveContainer>
+      </ChartContainer>
+    )
+  }
+
+  const EnhancedDonutChart = ({ data, dataKey, nameKey, title, subtitle, height = 300, formatter, actions }) => {
+    const theme = useTheme()
+    const isDarkMode = theme.palette.mode === "dark"
+
+    return (
+      <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions}>
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              labelLine={false}
+              outerRadius={80}
+              innerRadius={40}
+              fill="#8884d8"
+              dataKey={dataKey}
+              nameKey={nameKey}
+              label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+            >
+              {data.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={Object.values(chartTheme.colors)[index % Object.keys(chartTheme.colors).length]}
+                />
+              ))}
+            </Pie>
+            <RechartsTooltip
+              content={({ active, payload }) => (
+                <CustomTooltip
+                  active={active}
+                  payload={payload}
+                  formatter={formatter || ((value) => `${value} items`)}
+                />
+              )}
+            />
+            <Legend
+              verticalAlign="bottom"
+              height={36}
+              iconType="circle"
+              iconSize={10}
+              layout="horizontal"
+              align="center"
+            />
+          </PieChart>
+        </ResponsiveContainer>
+      </ChartContainer>
+    )
+  }
+
+  // Enhanced radar chart component
+  const EnhancedRadarChart = ({ data, dataKey, title, subtitle, height = 300, formatter, actions }) => {
+    const theme = useTheme()
+    const isDarkMode = theme.palette.mode === "dark"
+
+    return (
+      <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions}>
+        <ResponsiveContainer width="100%" height="100%">
+          <RadarChart cx="50%" cy="50%" outerRadius={80} data={data}>
+            <PolarGrid stroke={chartTheme.darkMode ? "#333" : "#e0e0e0"} />
+            <PolarAngleAxis dataKey="name" tick={{ fill: chartTheme.darkMode ? "#aaa" : "#2c3e50" }} />
+            <PolarRadiusAxis angle={30} domain={[0, "auto"]} />
+            <Radar
+              name={dataKey}
+              dataKey="value"
+              stroke={chartTheme.colors.primary}
+              fill={chartTheme.colors.primary}
+              fillOpacity={0.6}
+            />
+            <RechartsTooltip
+              content={({ active, payload }) => (
+                <CustomTooltip active={active} payload={payload} formatter={formatter || ((value) => value)} />
+              )}
+            />
+            <Legend verticalAlign="bottom" height={36} iconType="circle" iconSize={10} />
+          </RadarChart>
+        </ResponsiveContainer>
+      </ChartContainer>
+    )
+  }
+
+  // Enhanced table component
+  const EnhancedTable = ({ title, subtitle, columns, data, height = 400, actions, pagination = false, sx = {} }) => {
+    const theme = useTheme()
+    const isDarkMode = theme.palette.mode === "dark"
+
+    return (
+      <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions} sx={sx}>
+        <TableContainer sx={{ maxHeight: height, overflow: "auto" }}>
+          <Table stickyHeader>
+            <TableHead>
+              <TableRow>
+                {columns.map((column) => (
+                  <TableCell
+                    key={column.key}
+                    align={column.align || "left"}
+                    sx={{
+                      backgroundColor: alpha("#f15a22", isDarkMode ? 0.15 : 0.05),
+                      fontWeight: 600,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {column.label}
+                  </TableCell>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {data.map((row, index) => (
+                <TableRow
+                  key={index}
+                  sx={{
+                    "&:nth-of-type(odd)": {
+                      backgroundColor: isDarkMode ? alpha("#222", 0.5) : alpha("#f8f9fa", 0.5),
+                    },
+                    "&:hover": { backgroundColor: alpha("#f15a22", isDarkMode ? 0.15 : 0.05) },
+                    transition: "background-color 0.2s",
+                  }}
+                >
+                  {columns.map((column) => (
+                    <TableCell
+                      key={column.key}
+                      align={column.align || "left"}
+                      sx={{
+                        whiteSpace: column.nowrap ? "nowrap" : "normal",
+                        ...(column.sx || {}),
+                      }}
+                    >
+                      {column.render
+                        ? column.render(row[column.key], row)
+                        : (column.key === "Name" || column.key === "vendorName" || column.key === "name") &&
+                            row[column.key] === undefined
+                          ? row.name || row.Name || row.vendorName || column.defaultValue || "N/A"
+                          : row[column.key] === undefined || isNaN(row[column.key])
+                            ? column.defaultValue || "N/A"
+                            : row[column.key]}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        {pagination && (
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "flex-end",
+              alignItems: "center",
+              p: 2,
+              borderTop: isDarkMode ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(0, 0, 0, 0.05)",
+            }}
+          >
+            <Typography variant="body2" sx={{ mr: 2 }}>
+              Showing {Math.min(data.length, 10)} of {data.length} entries
+            </Typography>
+            <Button size="small" variant="outlined" disabled>
+              Previous
+            </Button>
+            <Box sx={{ mx: 1 }}>
+              <Chip label="1" color="primary" />
+            </Box>
+            <Button size="small" variant="outlined" disabled={data.length <= 10}>
+              Next
+            </Button>
+          </Box>
+        )}
+      </ChartContainer>
+    )
+  }
+
+  // Enhanced scatter chart component
+  const EnhancedScatterChart = ({ data, xKey, yKey, zKey, title, subtitle, height = 300, formatter, actions }) => {
+    const theme = useTheme()
+    const isDarkMode = theme.palette.mode === "dark"
+
+    return (
+      <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions}>
+        <ResponsiveContainer width="100%" height="100%">
+          <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.darkMode ? "#333" : "#eee"} />
+            <XAxis
+              type="number"
+              dataKey={xKey}
+              name={xKey}
+              stroke={chartTheme.darkMode ? "#aaa" : "#2c3e50"}
+              tick={{ fill: chartTheme.darkMode ? "#aaa" : "#2c3e50" }}
+            />
+            <YAxis
+              type="number"
+              dataKey={yKey}
+              name={yKey}
+              stroke={chartTheme.darkMode ? "#aaa" : "#2c3e50"}
+              tick={{ fill: chartTheme.darkMode ? "#aaa" : "#2c3e50" }}
+            />
+            <ZAxis type="number" dataKey={zKey} range={[40, 160]} name={zKey} />
+            <RechartsTooltip
+              content={({ active, payload }) => (
+                <CustomTooltip
+                  active={active}
+                  payload={payload}
+                  formatter={formatter || ((value) => value.toFixed(2))}
+                />
+              )}
+            />
+            <Legend verticalAlign="bottom" height={36} iconType="circle" iconSize={10} />
+            <Scatter name={title} data={data} fill={chartTheme.colors.primary} />
+          </ScatterChart>
+        </ResponsiveContainer>
+      </ChartContainer>
+    )
+  }
+
+  // Enhanced treemap component
+  const EnhancedTreemap = ({ data, dataKey, nameKey, title, subtitle, height = 300, formatter, actions }) => {
+    const theme = useTheme()
+    const isDarkMode = theme.palette.mode === "dark"
+
+    return (
+      <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions}>
+        <ResponsiveContainer width="100%" height="100%">
+          <Treemap
+            data={data}
+            dataKey={dataKey}
+            ratio={4 / 3}
+            stroke="#fff"
+            fill="#8884d8"
+            content={({ root, depth, x, y, width, height, index, payload, colors, rank, name }) => {
+              return (
+                <g>
+                  <rect
+                    x={x}
+                    y={y}
+                    width={width}
+                    height={height}
+                    style={{
+                      fill: Object.values(chartTheme.colors)[index % Object.keys(chartTheme.colors).length],
+                      stroke: "#fff",
+                      strokeWidth: 2 / (depth + 1e-10),
+                      strokeOpacity: 1 / (depth + 1e-10),
+                    }}
+                  />
+                  {depth === 1 && (
+                    <text x={x + width / 2} y={y + height / 2 + 7} textAnchor="middle" fill="#fff" fontSize={14}>
+                      {name}
+                    </text>
+                  )}
+                </g>
+              )
+            }}
+          >
+            <RechartsTooltip
+              content={({ active, payload }) => (
+                <CustomTooltip
+                  active={active}
+                  payload={payload}
+                  formatter={formatter || ((value) => `${value.toFixed(2)}`)}
+                />
+              )}
+            />
+          </Treemap>
+        </ResponsiveContainer>
+      </ChartContainer>
+    )
+  }
+
+  // Enhanced composed chart component
+  const EnhancedComposedChart = ({
+    data,
+    xKey,
+    barKeys,
+    lineKeys,
+    areaKeys,
+    title,
+    subtitle,
+    height = 300,
+    formatter,
+    actions,
+  }) => {
+    const theme = useTheme()
+    const isDarkMode = theme.palette.mode === "dark"
+
+    return (
+      <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions}>
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart data={data} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.darkMode ? "#333" : "#eee"} />
+            <XAxis
+              dataKey={xKey}
+              stroke={chartTheme.darkMode ? "#aaa" : "#2c3e50"}
+              tick={{ fill: chartTheme.darkMode ? "#aaa" : "#2c3e50" }}
+            />
+            <YAxis
+              stroke={chartTheme.darkMode ? "#aaa" : "#2c3e50"}
+              tick={{ fill: chartTheme.darkMode ? "#aaa" : "#2c3e50" }}
+            />
+            <RechartsTooltip
+              content={({ active, payload, label }) => (
+                <CustomTooltip
+                  active={active}
+                  payload={payload}
+                  label={label}
+                  formatter={formatter || ((value) => `$${value.toFixed(2)}`)}
+                />
+              )}
+            />
+            <Legend verticalAlign="bottom" height={36} iconType="circle" iconSize={10} />
+            {barKeys &&
+              barKeys.map((key, index) => (
+                <Bar
+                  key={key}
+                  dataKey={key}
+                  name={key}
+                  fill={Object.values(chartTheme.colors)[index % Object.keys(chartTheme.colors).length]}
+                  radius={[4, 4, 0, 0]}
+                />
+              ))}
+            {lineKeys &&
+              lineKeys.map((key, index) => (
+                <Line
+                  key={key}
+                  type="monotone"
+                  dataKey={key}
+                  name={key}
+                  stroke={
+                    Object.values(chartTheme.colors)[
+                      (index + (barKeys?.length || 0)) % Object.keys(chartTheme.colors).length
+                    ]
+                  }
+                  strokeWidth={3}
+                  dot={{ r: 4, strokeWidth: 2 }}
+                  activeDot={{ r: 6, strokeWidth: 2 }}
+                />
+              ))}
+            {areaKeys &&
+              areaKeys.map((key, index) => (
+                <Area
+                  key={key}
+                  type="monotone"
+                  dataKey={key}
+                  name={key}
+                  stroke={
+                    Object.values(chartTheme.colors)[
+                      (index + (barKeys?.length || 0) + (lineKeys?.length || 0)) % Object.keys(chartTheme.colors).length
+                    ]
+                  }
+                  fill={alpha(
+                    Object.values(chartTheme.colors)[
+                      (index + (barKeys?.length || 0) + (lineKeys?.length || 0)) % Object.keys(chartTheme.colors).length
+                    ],
+                    0.5,
+                  )}
+                />
+              ))}
+          </ComposedChart>
+        </ResponsiveContainer>
+      </ChartContainer>
+    )
+  }
+
+  // Enhanced loading state
+  const LoadingState = () => (
+    <Box
       sx={{
-        p: 0,
-        height: "100%",
         display: "flex",
         flexDirection: "column",
-        ...sx,
+        justifyContent: "center",
+        alignItems: "center",
+        p: 6,
+        minHeight: "500px",
+        bgcolor: "background.default",
+        borderRadius: 2,
       }}
     >
-      <CardContent sx={{ p: 3, flex: 1 }}>
+      <CircularProgress size={60} thickness={4} sx={{ color: "#f15a22" }} />
+      <Typography variant="h6" sx={{ mt: 3, color: "#2c3e50", fontWeight: 600 }}>
+        Loading Analytics Dashboard
+      </Typography>
+      <Typography variant="body1" sx={{ mt: 1, color: "#7f8c8d", textAlign: "center", maxWidth: 400 }}>
+        We're gathering all your business insights and preparing your personalized analytics dashboard
+      </Typography>
+      <Box sx={{ width: "50%", mt: 4 }}>
+        <LinearProgress sx={{ height: 8, borderRadius: 4 }} />
+      </Box>
+    </Box>
+  )
+
+  // Enhanced error state
+  const ErrorState = ({ message, onRetry }) => (
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "center",
+        p: 6,
+        minHeight: "400px",
+        bgcolor: "background.default",
+        borderRadius: 2,
+      }}
+    >
+      <Error sx={{ fontSize: 60, color: "#e74c3c", mb: 2 }} />
+      <Typography variant="h5" sx={{ color: "#2c3e50", fontWeight: 600, mb: 2 }}>
+        Data Loading Error
+      </Typography>
+      <Typography variant="body1" sx={{ color: "#7f8c8d", textAlign: "center", maxWidth: 500, mb: 4 }}>
+        {message ||
+          "We encountered an error while loading your analytics data. Please try again later or contact support if the problem persists."}
+      </Typography>
+      {onRetry && (
+        <Button variant="contained" color="primary" startIcon={<Refresh />} onClick={onRetry}>
+          Retry
+        </Button>
+      )}
+    </Box>
+  )
+
+  // Enhanced empty state
+  const EmptyState = ({ message, icon, actionText, onAction }) => {
+    const theme = useTheme()
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          p: 4,
+          minHeight: "200px",
+          bgcolor: theme.palette.mode === "dark" ? "rgba(30, 30, 30, 0.5)" : alpha("#f8f9fa", 0.5),
+          borderRadius: 2,
+        }}
+      >
+        {icon || <Info sx={{ fontSize: 40, color: "#3498db", mb: 2 }} />}
+        <Typography variant="body1" sx={{ mb: 1, fontWeight: 500, textAlign: "center" }}>
+          {message}
+        </Typography>
+        <Typography variant="body2" sx={{ textAlign: "center" }}>
+          No data available to display
+        </Typography>
+        {actionText && onAction && (
+          <Button variant="outlined" color="primary" size="small" onClick={onAction} sx={{ mt: 2 }}>
+            {actionText}
+          </Button>
+        )}
+      </Box>
+    )
+  }
+
+  // Enhanced section header
+  const SectionHeader = ({ title, subtitle, icon, actions }) => (
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        mb: 4,
+        "& .MuiSvgIcon-root": {
+          color: "#f15a22",
+          mr: 1.5,
+          fontSize: 28,
+        },
+      }}
+    >
+      <Box sx={{ display: "flex", alignItems: "center" }}>
+        {icon}
+        <Box>
+          <Typography variant="h5" sx={{ color: "#2c3e50", fontWeight: 700 }}>
+            {title}
+          </Typography>
+          {subtitle && (
+            <Typography variant="body1" sx={{ color: "#7f8c8d", mt: 0.5 }}>
+              {subtitle}
+            </Typography>
+          )}
+        </Box>
+      </Box>
+      {actions && <Box sx={{ display: "flex", gap: 1 }}>{actions}</Box>}
+    </Box>
+  )
+
+  // Enhanced KPI indicator component
+  const KPIIndicator = ({ title, value, target, unit = "", status = "neutral", icon }) => {
+    const theme = useTheme()
+
+    const getStatusColor = (status) => {
+      switch (status) {
+        case "success":
+          return theme.palette.success.main
+        case "warning":
+          return theme.palette.warning.main
+        case "error":
+          return theme.palette.error.main
+        default:
+          return theme.palette.info.main
+      }
+    }
+
+    const statusColor = getStatusColor(status)
+    const percentage = target ? Math.round((value / target) * 100) : null
+
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          p: 2,
+          borderRadius: 2,
+          border: `1px solid ${alpha(statusColor, 0.3)}`,
+          backgroundColor: alpha(statusColor, 0.05),
+        }}
+      >
+        {icon && (
+          <Box
+            sx={{
+              mr: 2,
+              backgroundColor: alpha(statusColor, 0.1),
+              borderRadius: "50%",
+              p: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              "& .MuiSvgIcon-root": {
+                color: statusColor,
+              },
+            }}
+          >
+            {icon}
+          </Box>
+        )}
+        <Box sx={{ flex: 1 }}>
+          <Typography variant="subtitle2" sx={{ color: "#7f8c8d", mb: 0.5 }}>
+            {title}
+          </Typography>
+          <Typography variant="h6" sx={{ color: "#2c3e50", fontWeight: 600 }}>
+            {value}
+            {unit}
+          </Typography>
+          {target && (
+            <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
+              <Box sx={{ flex: 1, mr: 1 }}>
+                <LinearProgress
+                  variant="determinate"
+                  value={Math.min(percentage, 100)}
+                  sx={{
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor: alpha(statusColor, 0.2),
+                    "& .MuiLinearProgress-bar": {
+                      backgroundColor: statusColor,
+                    },
+                  }}
+                />
+              </Box>
+              <Typography variant="body2" sx={{ color: statusColor, fontWeight: 500 }}>
+                {percentage}%
+              </Typography>
+            </Box>
+          )}
+        </Box>
+      </Box>
+    )
+  }
+
+  // Enhanced dashboard header with date range and actions
+  const DashboardHeader = ({ title, subtitle, dateRange, onDateRangeChange, actions }) => {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: { xs: "column", md: "row" },
+          justifyContent: "space-between",
+          alignItems: { xs: "flex-start", md: "center" },
+          mb: 4,
+          pb: 3,
+          borderBottom: "1px solid rgba(0, 0, 0, 0.05)",
+        }}
+      >
+        <Box sx={{ mb: { xs: 2, md: 0 } }}>
+          <Typography variant="h4" sx={{ color: "#2c3e50", fontWeight: 700 }}>
+            {title}
+          </Typography>
+          {subtitle && (
+            <Typography variant="body1" sx={{ color: "#7f8c8d", mt: 0.5 }}>
+              {subtitle}
+            </Typography>
+          )}
+        </Box>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            alignItems: { xs: "flex-start", sm: "center" },
+            gap: 2,
+          }}
+        >
+          {dateRange && (
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                padding: 1,
+                px: 2,
+                border: "1px solid rgba(0, 0, 0, 0.1)",
+                borderRadius: 2,
+                backgroundColor: "background.paper",
+              }}
+            >
+              <CalendarMonth sx={{ color: "#7f8c8d", mr: 1 }} />
+              <Typography variant="body2" sx={{ color: "#2c3e50", fontWeight: 500 }}>
+                {dateRange}
+              </Typography>
+              <IconButton size="small" sx={{ ml: 1 }} onClick={onDateRangeChange}>
+                <FilterList fontSize="small" />
+              </IconButton>
+            </Box>
+          )}
+          {actions && <Box sx={{ display: "flex", gap: 1 }}>{actions}</Box>}
+        </Box>
+      </Box>
+    )
+  }
+
+  // Enhanced status badge component
+  const StatusBadge = ({ status, text }) => {
+    const getStatusColor = (status) => {
+      switch (status) {
+        case "success":
+        case "active":
+        case "online":
+        case "completed":
+          return "success"
+        case "warning":
+        case "pending":
+        case "in-progress":
+          return "warning"
+        case "error":
+        case "inactive":
+        case "offline":
+        case "failed":
+          return "error"
+        default:
+          return "info"
+      }
+    }
+
+    const color = getStatusColor(status)
+
+    return (
+      <Chip
+        size="small"
+        color={color}
+        label={text || status}
+        sx={{
+          fontWeight: 500,
+          textTransform: "capitalize",
+        }}
+      />
+    )
+  }
+
+  // Enhanced comparison card component
+  const ComparisonCard = ({ title, current, previous, unit = "", percentChange, icon, color = "primary" }) => {
+    const theme = useTheme()
+    const isPositive = percentChange > 0
+
+    return (
+      <Card sx={{ p: 3 }}>
         <Box
           sx={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "flex-start",
+            mb: 2,
           }}
         >
-          <Box>
-            <Typography variant="subtitle2" sx={{ color: "#7f8c8d", mb: 1 }}>
-              {title}
-            </Typography>
-            <Typography variant="h4" sx={{ color: "#2c3e50", fontWeight: 700, mb: 1 }}>
-              {value}
-            </Typography>
-            {change !== undefined && (
-              <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: isPositive ? theme.palette.success.main : theme.palette.error.main,
-                    display: "flex",
-                    alignItems: "center",
-                    fontWeight: 500,
-                  }}
-                >
-                  {isPositive ? "+" : ""}
-                  {change}%
-                  {isPositive ? (
-                    <ArrowUpward fontSize="small" sx={{ ml: 0.5 }} />
-                  ) : (
-                    <ArrowDownward fontSize="small" sx={{ ml: 0.5 }} />
-                  )}
-                </Typography>
-                <Typography variant="body2" sx={{ color: "#7f8c8d", ml: 1 }}>
-                  vs last period
-                </Typography>
-              </Box>
-            )}
-            {subtitle && (
-              <Typography variant="body2" sx={{ mt: 1, color: "#7f8c8d" }}>
-                {subtitle}
-              </Typography>
-            )}
-          </Box>
+          <Typography variant="subtitle2" sx={{ color: "#7f8c8d" }}>
+            {title}
+          </Typography>
           {icon && (
             <Box
               sx={{
                 backgroundColor: alpha(theme.palette[color].main, 0.1),
                 borderRadius: "50%",
-                p: 1.5,
+                p: 1,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -474,1016 +1551,40 @@ const MetricCard = ({ title, value, change, icon, color = "primary", subtitle, f
             </Box>
           )}
         </Box>
-      </CardContent>
-      {footer && (
-        <Box
-          sx={{
-            p: 2,
-            pt: 0,
-            borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-            backgroundColor: alpha(theme.palette.background.default, 0.5),
-          }}
-        >
-          {footer}
-        </Box>
-      )}
-    </Card>
-  )
-}
-
-// TabPanel component to handle tab content
-function TabPanel(props) {
-  const { children, value, index, ...other } = props
-
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`analytics-tabpanel-${index}`}
-      aria-labelledby={`analytics-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box>{children}</Box>}
-    </div>
-  )
-}
-
-function a11yProps(index) {
-  return {
-    id: `analytics-tab-${index}`,
-    "aria-controls": `analytics-tabpanel-${index}`,
-  }
-}
-
-// Enhanced chart components
-const ChartContainer = ({ title, subtitle, children, height = 300, actions, sx = {} }) => {
-  return (
-    <Paper
-      elevation={2}
-      sx={{
-        p: 0,
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        "&:hover": {
-          boxShadow: "0 8px 16px rgba(0, 0, 0, 0.1)",
-        },
-        ...sx,
-      }}
-    >
-      <Box
-        sx={{
-          p: 3,
-          pb: 2,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          borderBottom: "1px solid rgba(0, 0, 0, 0.05)",
-        }}
-      >
-        <Box>
-          <Typography
-            variant="subtitle1"
-            sx={{
-              color: "#2c3e50",
-              fontWeight: 600,
-            }}
-          >
-            {title}
-          </Typography>
-          {subtitle && (
-            <Typography
-              variant="body2"
-              sx={{
-                color: "#7f8c8d",
-                mt: 0.5,
-              }}
-            >
-              {subtitle}
-            </Typography>
-          )}
-        </Box>
-        {actions && <Box sx={{ display: "flex", gap: 1 }}>{actions}</Box>}
-      </Box>
-      <Box sx={{ flex: 1, minHeight: height, p: 2 }}>{children}</Box>
-    </Paper>
-  )
-}
-
-// Enhanced tooltip component
-const CustomTooltip = ({ active, payload, label, formatter, title }) => {
-  if (active && payload && payload.length) {
-    return (
-      <Paper
-        elevation={3}
-        sx={{
-          p: 2,
-          backgroundColor: "rgba(255, 255, 255, 0.95)",
-          border: "1px solid #eee",
-          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-          maxWidth: 300,
-        }}
-      >
-        <Typography variant="subtitle2" sx={{ color: "#2c3e50", mb: 1, fontWeight: 600 }}>
-          {title || label}
-        </Typography>
-        {payload.map((entry, index) => (
-          <Box
-            key={index}
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-              mb: 0.5,
-            }}
-          >
-            <Box
-              sx={{
-                width: 12,
-                height: 12,
-                borderRadius: "50%",
-                backgroundColor: entry.color,
-              }}
-            />
-            <Typography variant="body2" sx={{ color: "#2c3e50" }}>
-              {entry.name}: {formatter ? formatter(entry.value, entry.name) : entry.value}
-            </Typography>
-          </Box>
-        ))}
-      </Paper>
-    )
-  }
-  return null
-}
-
-// Enhanced chart components
-const EnhancedLineChart = ({ data, xKey, yKeys, title, subtitle, height = 300, formatter, actions }) => {
-  return (
-    <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions}>
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 10 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-          <XAxis
-            dataKey={xKey}
-            stroke="#2c3e50"
-            tick={{ fill: "#2c3e50" }}
-            tickLine={{ stroke: "#2c3e50" }}
-            axisLine={{ stroke: "#2c3e50" }}
-          />
-          <YAxis
-            stroke="#2c3e50"
-            tick={{ fill: "#2c3e50" }}
-            tickLine={{ stroke: "#2c3e50" }}
-            axisLine={{ stroke: "#2c3e50" }}
-          />
-          <RechartsTooltip
-            content={({ active, payload, label }) => (
-              <CustomTooltip
-                active={active}
-                payload={payload}
-                label={label}
-                formatter={formatter || ((value) => `$${value.toFixed(2)}`)}
-              />
-            )}
-          />
-          <Legend verticalAlign="bottom" height={36} iconType="circle" iconSize={10} />
-          {yKeys.map((key, index) => (
-            <Line
-              key={key}
-              type="monotone"
-              dataKey={key}
-              name={key}
-              stroke={Object.values(chartTheme.colors)[index % Object.keys(chartTheme.colors).length]}
-              strokeWidth={3}
-              dot={{ r: 4, strokeWidth: 2 }}
-              activeDot={{ r: 6, strokeWidth: 2 }}
-            />
-          ))}
-        </LineChart>
-      </ResponsiveContainer>
-    </ChartContainer>
-  )
-}
-
-const EnhancedAreaChart = ({
-  data,
-  xKey,
-  yKeys,
-  title,
-  subtitle,
-  height = 300,
-  formatter,
-  stacked = false,
-  actions,
-}) => {
-  return (
-    <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions}>
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 10 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-          <XAxis dataKey={xKey} stroke="#2c3e50" tick={{ fill: "#2c3e50" }} />
-          <YAxis stroke="#2c3e50" tick={{ fill: "#2c3e50" }} />
-          <RechartsTooltip
-            content={({ active, payload, label }) => (
-              <CustomTooltip
-                active={active}
-                payload={payload}
-                label={label}
-                formatter={formatter || ((value) => `$${value.toFixed(2)}`)}
-              />
-            )}
-          />
-          <Legend verticalAlign="bottom" height={36} iconType="circle" iconSize={10} />
-          {yKeys.map((key, index) => (
-            <Area
-              key={key}
-              type="monotone"
-              dataKey={key}
-              name={key}
-              stackId={stacked ? "1" : index}
-              stroke={Object.values(chartTheme.colors)[index % Object.keys(chartTheme.colors).length]}
-              fill={alpha(Object.values(chartTheme.colors)[index % Object.keys(chartTheme.colors).length], 0.5)}
-            />
-          ))}
-        </AreaChart>
-      </ResponsiveContainer>
-    </ChartContainer>
-  )
-}
-
-const EnhancedBarChart = ({
-  data,
-  xKey,
-  yKeys,
-  title,
-  subtitle,
-  height = 300,
-  formatter,
-  stacked = false,
-  actions,
-}) => {
-  return (
-    <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions}>
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 10 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-          <XAxis dataKey={xKey} stroke="#2c3e50" tick={{ fill: "#2c3e50" }} />
-          <YAxis stroke="#2c3e50" tick={{ fill: "#2c3e50" }} />
-          <RechartsTooltip
-            content={({ active, payload, label }) => (
-              <CustomTooltip
-                active={active}
-                payload={payload}
-                label={label}
-                formatter={formatter || ((value) => `$${value.toFixed(2)}`)}
-              />
-            )}
-          />
-          <Legend verticalAlign="bottom" height={36} iconType="circle" iconSize={10} />
-          {yKeys.map((key, index) => (
-            <Bar
-              key={key}
-              dataKey={key}
-              name={key}
-              stackId={stacked ? "1" : undefined}
-              fill={Object.values(chartTheme.colors)[index % Object.keys(chartTheme.colors).length]}
-              radius={[4, 4, 0, 0]}
-            />
-          ))}
-        </BarChart>
-      </ResponsiveContainer>
-    </ChartContainer>
-  )
-}
-
-const EnhancedPieChart = ({ data, dataKey, nameKey, title, subtitle, height = 300, formatter, actions }) => {
-  return (
-    <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions}>
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={data}
-            cx="50%"
-            cy="50%"
-            labelLine={false}
-            outerRadius={80}
-            innerRadius={0}
-            fill="#8884d8"
-            dataKey={dataKey}
-            nameKey={nameKey}
-            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-          >
-            {data.map((entry, index) => (
-              <Cell
-                key={`cell-${index}`}
-                fill={Object.values(chartTheme.colors)[index % Object.keys(chartTheme.colors).length]}
-              />
-            ))}
-          </Pie>
-          <RechartsTooltip
-            content={({ active, payload }) => (
-              <CustomTooltip active={active} payload={payload} formatter={formatter || ((value) => `${value} items`)} />
-            )}
-          />
-          <Legend
-            verticalAlign="bottom"
-            height={36}
-            iconType="circle"
-            iconSize={10}
-            layout="horizontal"
-            align="center"
-          />
-        </PieChart>
-      </ResponsiveContainer>
-    </ChartContainer>
-  )
-}
-
-const EnhancedDonutChart = ({ data, dataKey, nameKey, title, subtitle, height = 300, formatter, actions }) => {
-  return (
-    <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions}>
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={data}
-            cx="50%"
-            cy="50%"
-            labelLine={false}
-            outerRadius={80}
-            innerRadius={40}
-            fill="#8884d8"
-            dataKey={dataKey}
-            nameKey={nameKey}
-            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-          >
-            {data.map((entry, index) => (
-              <Cell
-                key={`cell-${index}`}
-                fill={Object.values(chartTheme.colors)[index % Object.keys(chartTheme.colors).length]}
-              />
-            ))}
-          </Pie>
-          <RechartsTooltip
-            content={({ active, payload }) => (
-              <CustomTooltip active={active} payload={payload} formatter={formatter || ((value) => `${value} items`)} />
-            )}
-          />
-          <Legend
-            verticalAlign="bottom"
-            height={36}
-            iconType="circle"
-            iconSize={10}
-            layout="horizontal"
-            align="center"
-          />
-        </PieChart>
-      </ResponsiveContainer>
-    </ChartContainer>
-  )
-}
-
-// Enhanced radar chart component
-const EnhancedRadarChart = ({ data, dataKey, title, subtitle, height = 300, formatter, actions }) => {
-  return (
-    <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions}>
-      <ResponsiveContainer width="100%" height="100%">
-        <RadarChart cx="50%" cy="50%" outerRadius={80} data={data}>
-          <PolarGrid stroke="#e0e0e0" />
-          <PolarAngleAxis dataKey="name" tick={{ fill: "#2c3e50" }} />
-          <PolarRadiusAxis angle={30} domain={[0, "auto"]} />
-          <Radar
-            name={dataKey}
-            dataKey="value"
-            stroke={chartTheme.colors.primary}
-            fill={chartTheme.colors.primary}
-            fillOpacity={0.6}
-          />
-          <RechartsTooltip
-            content={({ active, payload }) => (
-              <CustomTooltip active={active} payload={payload} formatter={formatter || ((value) => value)} />
-            )}
-          />
-          <Legend verticalAlign="bottom" height={36} iconType="circle" iconSize={10} />
-        </RadarChart>
-      </ResponsiveContainer>
-    </ChartContainer>
-  )
-}
-
-// Enhanced table component
-const EnhancedTable = ({ title, subtitle, columns, data, height = 400, actions, pagination = false, sx = {} }) => {
-  return (
-    <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions} sx={sx}>
-      <TableContainer sx={{ maxHeight: height, overflow: "auto" }}>
-        <Table stickyHeader>
-          <TableHead>
-            <TableRow>
-              {columns.map((column) => (
-                <TableCell
-                  key={column.key}
-                  align={column.align || "left"}
-                  sx={{
-                    backgroundColor: alpha("#f15a22", 0.05),
-                    color: "#2c3e50",
-                    fontWeight: 600,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {column.label}
-                </TableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {data.map((row, index) => (
-              <TableRow
-                key={index}
-                sx={{
-                  "&:nth-of-type(odd)": {
-                    backgroundColor: alpha("#f8f9fa", 0.5),
-                  },
-                  "&:hover": { backgroundColor: alpha("#f15a22", 0.05) },
-                  transition: "background-color 0.2s",
-                }}
-              >
-                {columns.map((column) => (
-                  <TableCell
-                    key={column.key}
-                    align={column.align || "left"}
-                    sx={{
-                      color: "#2c3e50",
-                      whiteSpace: column.nowrap ? "nowrap" : "normal",
-                      ...(column.sx || {}),
-                    }}
-                  >
-                    {column.render
-                      ? column.render(row[column.key], row)
-                      : (column.key === "Name" || column.key === "vendorName" || column.key === "name") &&
-                          row[column.key] === undefined
-                        ? row.name || row.Name || row.vendorName || column.defaultValue || "N/A"
-                        : row[column.key] === undefined || isNaN(row[column.key])
-                          ? column.defaultValue || "N/A"
-                          : row[column.key]}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-      {pagination && (
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "flex-end",
-            alignItems: "center",
-            p: 2,
-            borderTop: "1px solid rgba(0, 0, 0, 0.05)",
-          }}
-        >
-          <Typography variant="body2" sx={{ mr: 2 }}>
-            Showing {Math.min(data.length, 10)} of {data.length} entries
-          </Typography>
-          <Button size="small" variant="outlined" disabled>
-            Previous
-          </Button>
-          <Box sx={{ mx: 1 }}>
-            <Chip label="1" color="primary" />
-          </Box>
-          <Button size="small" variant="outlined" disabled={data.length <= 10}>
-            Next
-          </Button>
-        </Box>
-      )}
-    </ChartContainer>
-  )
-}
-
-// Enhanced scatter chart component
-const EnhancedScatterChart = ({ data, xKey, yKey, zKey, title, subtitle, height = 300, formatter, actions }) => {
-  return (
-    <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions}>
-      <ResponsiveContainer width="100%" height="100%">
-        <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-          <XAxis type="number" dataKey={xKey} name={xKey} stroke="#2c3e50" tick={{ fill: "#2c3e50" }} />
-          <YAxis type="number" dataKey={yKey} name={yKey} stroke="#2c3e50" tick={{ fill: "#2c3e50" }} />
-          <ZAxis type="number" dataKey={zKey} range={[40, 160]} name={zKey} />
-          <RechartsTooltip
-            content={({ active, payload }) => (
-              <CustomTooltip active={active} payload={payload} formatter={formatter || ((value) => value.toFixed(2))} />
-            )}
-          />
-          <Legend verticalAlign="bottom" height={36} iconType="circle" iconSize={10} />
-          <Scatter name={title} data={data} fill={chartTheme.colors.primary} />
-        </ScatterChart>
-      </ResponsiveContainer>
-    </ChartContainer>
-  )
-}
-
-// Enhanced treemap component
-const EnhancedTreemap = ({ data, dataKey, nameKey, title, subtitle, height = 300, formatter, actions }) => {
-  return (
-    <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions}>
-      <ResponsiveContainer width="100%" height="100%">
-        <Treemap
-          data={data}
-          dataKey={dataKey}
-          ratio={4 / 3}
-          stroke="#fff"
-          fill="#8884d8"
-          content={({ root, depth, x, y, width, height, index, payload, colors, rank, name }) => {
-            return (
-              <g>
-                <rect
-                  x={x}
-                  y={y}
-                  width={width}
-                  height={height}
-                  style={{
-                    fill: Object.values(chartTheme.colors)[index % Object.keys(chartTheme.colors).length],
-                    stroke: "#fff",
-                    strokeWidth: 2 / (depth + 1e-10),
-                    strokeOpacity: 1 / (depth + 1e-10),
-                  }}
-                />
-                {depth === 1 && (
-                  <text x={x + width / 2} y={y + height / 2 + 7} textAnchor="middle" fill="#fff" fontSize={14}>
-                    {name}
-                  </text>
-                )}
-              </g>
-            )
-          }}
-        >
-          <RechartsTooltip
-            content={({ active, payload }) => (
-              <CustomTooltip
-                active={active}
-                payload={payload}
-                formatter={formatter || ((value) => `${value.toFixed(2)}`)}
-              />
-            )}
-          />
-        </Treemap>
-      </ResponsiveContainer>
-    </ChartContainer>
-  )
-}
-
-// Enhanced composed chart component
-const EnhancedComposedChart = ({
-  data,
-  xKey,
-  barKeys,
-  lineKeys,
-  areaKeys,
-  title,
-  subtitle,
-  height = 300,
-  formatter,
-  actions,
-}) => {
-  return (
-    <ChartContainer title={title} subtitle={subtitle} height={height} actions={actions}>
-      <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={data} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-          <XAxis dataKey={xKey} stroke="#2c3e50" tick={{ fill: "#2c3e50" }} />
-          <YAxis stroke="#2c3e50" tick={{ fill: "#2c3e50" }} />
-          <RechartsTooltip
-            content={({ active, payload, label }) => (
-              <CustomTooltip
-                active={active}
-                payload={payload}
-                label={label}
-                formatter={formatter || ((value) => `$${value.toFixed(2)}`)}
-              />
-            )}
-          />
-          <Legend verticalAlign="bottom" height={36} iconType="circle" iconSize={10} />
-          {barKeys &&
-            barKeys.map((key, index) => (
-              <Bar
-                key={key}
-                dataKey={key}
-                name={key}
-                fill={Object.values(chartTheme.colors)[index % Object.keys(chartTheme.colors).length]}
-                radius={[4, 4, 0, 0]}
-              />
-            ))}
-          {lineKeys &&
-            lineKeys.map((key, index) => (
-              <Line
-                key={key}
-                type="monotone"
-                dataKey={key}
-                name={key}
-                stroke={
-                  Object.values(chartTheme.colors)[
-                    (index + (barKeys?.length || 0)) % Object.keys(chartTheme.colors).length
-                  ]
-                }
-                strokeWidth={3}
-                dot={{ r: 4, strokeWidth: 2 }}
-                activeDot={{ r: 6, strokeWidth: 2 }}
-              />
-            ))}
-          {areaKeys &&
-            areaKeys.map((key, index) => (
-              <Area
-                key={key}
-                type="monotone"
-                dataKey={key}
-                name={key}
-                stroke={
-                  Object.values(chartTheme.colors)[
-                    (index + (barKeys?.length || 0) + (lineKeys?.length || 0)) % Object.keys(chartTheme.colors).length
-                  ]
-                }
-                fill={alpha(
-                  Object.values(chartTheme.colors)[
-                    (index + (barKeys?.length || 0) + (lineKeys?.length || 0)) % Object.keys(chartTheme.colors).length
-                  ],
-                  0.5,
-                )}
-              />
-            ))}
-        </ComposedChart>
-      </ResponsiveContainer>
-    </ChartContainer>
-  )
-}
-
-// Enhanced loading state
-const LoadingState = () => (
-  <Box
-    sx={{
-      display: "flex",
-      flexDirection: "column",
-      justifyContent: "center",
-      alignItems: "center",
-      p: 6,
-      minHeight: "500px",
-      bgcolor: "background.default",
-      borderRadius: 2,
-    }}
-  >
-    <CircularProgress size={60} thickness={4} sx={{ color: "#f15a22" }} />
-    <Typography variant="h6" sx={{ mt: 3, color: "#2c3e50", fontWeight: 600 }}>
-      Loading Analytics Dashboard
-    </Typography>
-    <Typography variant="body1" sx={{ mt: 1, color: "#7f8c8d", textAlign: "center", maxWidth: 400 }}>
-      We're gathering all your business insights and preparing your personalized analytics dashboard
-    </Typography>
-    <Box sx={{ width: "50%", mt: 4 }}>
-      <LinearProgress sx={{ height: 8, borderRadius: 4 }} />
-    </Box>
-  </Box>
-)
-
-// Enhanced error state
-const ErrorState = ({ message, onRetry }) => (
-  <Box
-    sx={{
-      display: "flex",
-      flexDirection: "column",
-      justifyContent: "center",
-      alignItems: "center",
-      p: 6,
-      minHeight: "400px",
-      bgcolor: "background.default",
-      borderRadius: 2,
-    }}
-  >
-    <Error sx={{ fontSize: 60, color: "#e74c3c", mb: 2 }} />
-    <Typography variant="h5" sx={{ color: "#2c3e50", fontWeight: 600, mb: 2 }}>
-      Data Loading Error
-    </Typography>
-    <Typography variant="body1" sx={{ color: "#7f8c8d", textAlign: "center", maxWidth: 500, mb: 4 }}>
-      {message ||
-        "We encountered an error while loading your analytics data. Please try again later or contact support if the problem persists."}
-    </Typography>
-    {onRetry && (
-      <Button variant="contained" color="primary" startIcon={<Refresh />} onClick={onRetry}>
-        Retry
-      </Button>
-    )}
-  </Box>
-)
-
-// Enhanced empty state
-const EmptyState = ({ message, icon, actionText, onAction }) => (
-  <Box
-    sx={{
-      display: "flex",
-      flexDirection: "column",
-      justifyContent: "center",
-      alignItems: "center",
-      p: 4,
-      minHeight: "200px",
-      bgcolor: alpha("#f8f9fa", 0.5),
-      borderRadius: 2,
-    }}
-  >
-    {icon || <Info sx={{ fontSize: 40, color: "#3498db", mb: 2 }} />}
-    <Typography variant="body1" sx={{ color: "#2c3e50", mb: 1, fontWeight: 500, textAlign: "center" }}>
-      {message}
-    </Typography>
-    <Typography variant="body2" sx={{ color: "#7f8c8d", textAlign: "center" }}>
-      No data available to display
-    </Typography>
-    {actionText && onAction && (
-      <Button variant="outlined" color="primary" size="small" onClick={onAction} sx={{ mt: 2 }}>
-        {actionText}
-      </Button>
-    )}
-  </Box>
-)
-
-// Enhanced section header
-const SectionHeader = ({ title, subtitle, icon, actions }) => (
-  <Box
-    sx={{
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      mb: 4,
-      "& .MuiSvgIcon-root": {
-        color: "#f15a22",
-        mr: 1.5,
-        fontSize: 28,
-      },
-    }}
-  >
-    <Box sx={{ display: "flex", alignItems: "center" }}>
-      {icon}
-      <Box>
-        <Typography variant="h5" sx={{ color: "#2c3e50", fontWeight: 700 }}>
-          {title}
-        </Typography>
-        {subtitle && (
-          <Typography variant="body1" sx={{ color: "#7f8c8d", mt: 0.5 }}>
-            {subtitle}
-          </Typography>
-        )}
-      </Box>
-    </Box>
-    {actions && <Box sx={{ display: "flex", gap: 1 }}>{actions}</Box>}
-  </Box>
-)
-
-// Enhanced KPI indicator component
-const KPIIndicator = ({ title, value, target, unit = "", status = "neutral", icon }) => {
-  const theme = useTheme()
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "success":
-        return theme.palette.success.main
-      case "warning":
-        return theme.palette.warning.main
-      case "error":
-        return theme.palette.error.main
-      default:
-        return theme.palette.info.main
-    }
-  }
-
-  const statusColor = getStatusColor(status)
-  const percentage = target ? Math.round((value / target) * 100) : null
-
-  return (
-    <Box
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        p: 2,
-        borderRadius: 2,
-        border: `1px solid ${alpha(statusColor, 0.3)}`,
-        backgroundColor: alpha(statusColor, 0.05),
-      }}
-    >
-      {icon && (
-        <Box
-          sx={{
-            mr: 2,
-            backgroundColor: alpha(statusColor, 0.1),
-            borderRadius: "50%",
-            p: 1,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            "& .MuiSvgIcon-root": {
-              color: statusColor,
-            },
-          }}
-        >
-          {icon}
-        </Box>
-      )}
-      <Box sx={{ flex: 1 }}>
-        <Typography variant="subtitle2" sx={{ color: "#7f8c8d", mb: 0.5 }}>
-          {title}
-        </Typography>
-        <Typography variant="h6" sx={{ color: "#2c3e50", fontWeight: 600 }}>
-          {value}
+        <Typography variant="h4" sx={{ color: "#2c3e50", fontWeight: 700, mb: 1 }}>
+          {current}
           {unit}
         </Typography>
-        {target && (
-          <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
-            <Box sx={{ flex: 1, mr: 1 }}>
-              <LinearProgress
-                variant="determinate"
-                value={Math.min(percentage, 100)}
-                sx={{
-                  height: 6,
-                  borderRadius: 3,
-                  backgroundColor: alpha(statusColor, 0.2),
-                  "& .MuiLinearProgress-bar": {
-                    backgroundColor: statusColor,
-                  },
-                }}
-              />
-            </Box>
-            <Typography variant="body2" sx={{ color: statusColor, fontWeight: 500 }}>
-              {percentage}%
-            </Typography>
-          </Box>
-        )}
-      </Box>
-    </Box>
-  )
-}
-
-// Enhanced dashboard header with date range and actions
-const DashboardHeader = ({ title, subtitle, dateRange, onDateRangeChange, actions }) => {
-  return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: { xs: "column", md: "row" },
-        justifyContent: "space-between",
-        alignItems: { xs: "flex-start", md: "center" },
-        mb: 4,
-        pb: 3,
-        borderBottom: "1px solid rgba(0, 0, 0, 0.05)",
-      }}
-    >
-      <Box sx={{ mb: { xs: 2, md: 0 } }}>
-        <Typography variant="h4" sx={{ color: "#2c3e50", fontWeight: 700 }}>
-          {title}
-        </Typography>
-        {subtitle && (
-          <Typography variant="body1" sx={{ color: "#7f8c8d", mt: 0.5 }}>
-            {subtitle}
-          </Typography>
-        )}
-      </Box>
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: { xs: "column", sm: "row" },
-          alignItems: { xs: "flex-start", sm: "center" },
-          gap: 2,
-        }}
-      >
-        {dateRange && (
-          <Box
+        <Box sx={{ display: "flex", alignItems: "center" }}>
+          <Typography
+            variant="body2"
             sx={{
+              color: isPositive ? theme.palette.success.main : theme.palette.error.main,
               display: "flex",
               alignItems: "center",
-              padding: 1,
-              px: 2,
-              border: "1px solid rgba(0, 0, 0, 0.1)",
-              borderRadius: 2,
-              backgroundColor: "background.paper",
+              fontWeight: 500,
             }}
           >
-            <CalendarMonth sx={{ color: "#7f8c8d", mr: 1 }} />
-            <Typography variant="body2" sx={{ color: "#2c3e50", fontWeight: 500 }}>
-              {dateRange}
-            </Typography>
-            <IconButton size="small" sx={{ ml: 1 }} onClick={onDateRangeChange}>
-              <FilterList fontSize="small" />
-            </IconButton>
-          </Box>
-        )}
-        {actions && <Box sx={{ display: "flex", gap: 1 }}>{actions}</Box>}
-      </Box>
-    </Box>
-  )
-}
-
-// Enhanced status badge component
-const StatusBadge = ({ status, text }) => {
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "success":
-      case "active":
-      case "online":
-      case "completed":
-        return "success"
-      case "warning":
-      case "pending":
-      case "in-progress":
-        return "warning"
-      case "error":
-      case "inactive":
-      case "offline":
-      case "failed":
-        return "error"
-      default:
-        return "info"
-    }
+            {isPositive ? "+" : ""}
+            {percentChange}%
+            {isPositive ? (
+              <ArrowUpward fontSize="small" sx={{ ml: 0.5 }} />
+            ) : (
+              <ArrowDownward fontSize="small" sx={{ ml: 0.5 }} />
+            )}
+          </Typography>
+          <Typography variant="body2" sx={{ color: "#7f8c8d", ml: 1 }}>
+            vs previous ({previous}
+            {unit})
+          </Typography>
+        </Box>
+      </Card>
+    )
   }
 
-  const color = getStatusColor(status)
-
-  return (
-    <Chip
-      size="small"
-      color={color}
-      label={text || status}
-      sx={{
-        fontWeight: 500,
-        textTransform: "capitalize",
-      }}
-    />
-  )
-}
-
-// Enhanced comparison card component
-const ComparisonCard = ({ title, current, previous, unit = "", percentChange, icon, color = "primary" }) => {
-  const theme = useTheme()
-  const isPositive = percentChange > 0
-
-  return (
-    <Card sx={{ p: 3 }}>
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          mb: 2,
-        }}
-      >
-        <Typography variant="subtitle2" sx={{ color: "#7f8c8d" }}>
-          {title}
-        </Typography>
-        {icon && (
-          <Box
-            sx={{
-              backgroundColor: alpha(theme.palette[color].main, 0.1),
-              borderRadius: "50%",
-              p: 1,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              "& .MuiSvgIcon-root": {
-                color: theme.palette[color].main,
-              },
-            }}
-          >
-            {icon}
-          </Box>
-        )}
-      </Box>
-      <Typography variant="h4" sx={{ color: "#2c3e50", fontWeight: 700, mb: 1 }}>
-        {current}
-        {unit}
-      </Typography>
-      <Box sx={{ display: "flex", alignItems: "center" }}>
-        <Typography
-          variant="body2"
-          sx={{
-            color: isPositive ? theme.palette.success.main : theme.palette.error.main,
-            display: "flex",
-            alignItems: "center",
-            fontWeight: 500,
-          }}
-        >
-          {isPositive ? "+" : ""}
-          {percentChange}%
-          {isPositive ? (
-            <ArrowUpward fontSize="small" sx={{ ml: 0.5 }} />
-          ) : (
-            <ArrowDownward fontSize="small" sx={{ ml: 0.5 }} />
-          )}
-        </Typography>
-        <Typography variant="body2" sx={{ color: "#7f8c8d", ml: 1 }}>
-          vs previous ({previous}
-          {unit})
-        </Typography>
-      </Box>
-    </Card>
-  )
-}
-
-const ReportAnalytics = () => {
   const theme = useTheme()
   const [value, setValue] = useState(0)
+  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" })
 
   const handleChange = (event, newValue) => {
     setValue(newValue)
@@ -2380,21 +2481,170 @@ const ReportAnalytics = () => {
     lowStockItems,
   } = processMenuAndInventoryData()
 
+  const handleExportPDF = async () => {
+    try {
+      const element = document.getElementById("analytics-dashboard")
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      })
+
+      const imgData = canvas.toDataURL("image/png")
+      const pdf = new jsPDF("p", "mm", "a4")
+      const pdfWidth = pdf.internal.pageSize.getWidth()
+      const pdfHeight = pdf.internal.pageSize.getHeight()
+      const imgWidth = canvas.width
+      const imgHeight = canvas.height
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight)
+      const imgX = (pdfWidth - imgWidth * ratio) / 2
+      const imgY = 30
+
+      pdf.addImage(imgData, "PNG", imgX, imgY, imgWidth * ratio, imgHeight * ratio)
+      pdf.save("analytics-report.pdf")
+
+      setSnackbar({
+        open: true,
+        message: "Report exported to PDF successfully",
+        severity: "success",
+      })
+    } catch (error) {
+      console.error("Error exporting to PDF:", error)
+      setSnackbar({
+        open: true,
+        message: "Failed to export report to PDF",
+        severity: "error",
+      })
+    }
+  }
+
+  const handlePrint = () => {
+    try {
+      const element = document.getElementById("analytics-dashboard")
+      const originalContents = document.body.innerHTML
+      const printContents = element.innerHTML
+
+      document.body.innerHTML = printContents
+      window.print()
+      document.body.innerHTML = originalContents
+
+      setSnackbar({
+        open: true,
+        message: "Printing initiated",
+        severity: "success",
+      })
+    } catch (error) {
+      console.error("Error printing:", error)
+      setSnackbar({
+        open: true,
+        message: "Failed to print report",
+        severity: "error",
+      })
+    }
+  }
+
+  const handleShare = async () => {
+    try {
+      const element = document.getElementById("analytics-dashboard")
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      })
+
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve))
+      const file = new File([blob], "analytics-report.png", { type: "image/png" })
+
+      if (navigator.share) {
+        await navigator.share({
+          title: "Analytics Report",
+          text: "Check out this analytics report",
+          files: [file],
+        })
+
+        setSnackbar({
+          open: true,
+          message: "Report shared successfully",
+          severity: "success",
+        })
+      } else {
+        throw new Error("Web Share API not supported")
+      }
+    } catch (error) {
+      console.error("Error sharing:", error)
+      setSnackbar({
+        open: true,
+        message: "Failed to share report",
+        severity: "error",
+      })
+    }
+  }
+
+  const handleDownloadData = () => {
+    try {
+      const data = {
+        transactions: transactions,
+        posConfigs: posConfigs,
+        banks: banks,
+        purchaseOrders: purchaseOrders,
+        vendors: vendors,
+        menuCategories: menuCategories,
+        finishedGoods: finishedGoods,
+        bomData: bomData,
+      }
+
+      const worksheet = XLSX.utils.json_to_sheet(
+        Object.entries(data).map(([key, value]) => ({
+          category: key,
+          count: value.length,
+          lastUpdated: new Date().toISOString(),
+        })),
+      )
+
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Analytics Summary")
+
+      const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" })
+      const dataBlob = new Blob([excelBuffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      })
+
+      saveAs(dataBlob, "analytics-data.xlsx")
+
+      setSnackbar({
+        open: true,
+        message: "Data downloaded successfully",
+        severity: "success",
+      })
+    } catch (error) {
+      console.error("Error downloading data:", error)
+      setSnackbar({
+        open: true,
+        message: "Failed to download data",
+        severity: "error",
+      })
+    }
+  }
+
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false })
+  }
+
   // Common chart actions
   const commonChartActions = (
     <>
       <Tooltip title="Download Data">
-        <IconButton size="small">
+        <IconButton size="small" onClick={handleDownloadData}>
           <FileDownload fontSize="small" />
         </IconButton>
       </Tooltip>
       <Tooltip title="Print Chart">
-        <IconButton size="small">
+        <IconButton size="small" onClick={handlePrint}>
           <Print fontSize="small" />
         </IconButton>
       </Tooltip>
       <Tooltip title="Share">
-        <IconButton size="small">
+        <IconButton size="small" onClick={handleShare}>
           <Share fontSize="small" />
         </IconButton>
       </Tooltip>
@@ -2413,6 +2663,7 @@ const ReportAnalytics = () => {
     <ThemeProvider theme={customTheme}>
       <MainContentWrapper>
         <Box
+          id="analytics-dashboard"
           sx={{
             width: "100%",
             overflow: "auto",
@@ -2426,13 +2677,13 @@ const ReportAnalytics = () => {
             {/* Dashboard Header */}
             <Box sx={{ p: 3, borderBottom: "1px solid rgba(0, 0, 0, 0.05)" }}>
               <DashboardHeader
-                title="Business Analytics Dashboard"
+                title="Reports and Analytics"
                 subtitle="Comprehensive insights into your business performance"
                 dateRange={dateRange}
                 onDateRangeChange={() => {}}
                 actions={
                   <>
-                    <Button variant="outlined" color="primary" startIcon={<Download />}>
+                    <Button variant="outlined" color="primary" startIcon={<Download />} onClick={handleExportPDF}>
                       Export
                     </Button>
                     <Button variant="contained" color="primary" startIcon={<Refresh />} onClick={handleRetry}>
@@ -3732,8 +3983,7 @@ const ReportAnalytics = () => {
                 {vendors.length === 0 ? (
                   <EmptyState message="No vendor data available to display." />
                 ) : (
-                  (
-                    <Grid container spacing={3}>
+                  <Grid container spacing={3}>
                     <Grid item xs={12} md={6}>
                       <EnhancedPieChart
                         title="Vendors by City"
@@ -3791,7 +4041,7 @@ const ReportAnalytics = () => {
                             value={((activeVendors / totalVendors) * 100).toFixed(1)}
                             unit="%"
                             target={90}
-                            status={((activeVendors / totalVendors) * 100) > 85 ? "success" : "warning"}
+                            status={(activeVendors / totalVendors) * 100 > 85 ? "success" : "warning"}
                             icon={<CheckCircle />}
                           />
 
@@ -3800,7 +4050,7 @@ const ReportAnalytics = () => {
                             value={averageProductsPerVendor.toFixed(1)}
                             unit=""
                             target={10}
-                            status={(averageProductsPerVendor > 8 ? "success" : "warning")}
+                            status={averageProductsPerVendor > 8 ? "success" : "warning"}
                             icon={<Inventory />}
                           />
 
@@ -3813,22 +4063,22 @@ const ReportAnalytics = () => {
                             unit="/5"
                             target={4}
                             status={
-                              ((vendorRatings.reduce((sum, rating) => sum + rating.rating * rating.count, 0) /
-                                vendorRatings.reduce((sum, rating) => sum + rating.count, 0)) >
+                              vendorRatings.reduce((sum, rating) => sum + rating.rating * rating.count, 0) /
+                                vendorRatings.reduce((sum, rating) => sum + rating.count, 0) >
                               3.5
                                 ? "success"
-                                : "warning")
+                                : "warning"
                             }
                             icon={<Star />}
                           />
 
                           <KPIIndicator
                             title="Vendor Concentration"
-                            value={(((topVendors[0]?.totalAmount / totalAmount) * 100) || 0).toFixed(1)}
+                            value={((topVendors[0]?.totalAmount / totalAmount) * 100 || 0).toFixed(1)}
                             unit="%"
                             target={30}
                             status={
-                              (((topVendors[0]?.totalAmount / totalAmount) * 100) || 0) < 35 ? "success" : "warning"
+                              ((topVendors[0]?.totalAmount / totalAmount) * 100 || 0) < 35 ? "success" : "warning"
                             }
                             icon={<PieChartIcon />}
                           />
@@ -3841,26 +4091,26 @@ const ReportAnalytics = () => {
                         title="Vendor Details"
                         subtitle="Complete information about all vendors"
                         columns={[
-                          { 
-                            key: "vendorName", 
+                          {
+                            key: "vendorName",
                             label: "Vendor Name",
-                            render: (value, row) => value || row.name || "Unknown Vendor" 
+                            render: (value, row) => value || row.name || "Unknown Vendor",
                           },
-                          { 
-                            key: "city", 
+                          {
+                            key: "city",
                             label: "City",
-                            render: (value) => value || "Unknown Location"
+                            render: (value) => value || "Unknown Location",
                           },
-                          { 
-                            key: "phone", 
+                          {
+                            key: "phone",
                             label: "Contact",
-                            render: (value) => value || "No Contact Info"
+                            render: (value) => value || "No Contact Info",
                           },
                           {
                             key: "productList",
                             label: "Products",
                             align: "right",
-                            render: (value) => (value?.length || 0),
+                            render: (value) => value?.length || 0,
                           },
                           {
                             key: "totalValue",
@@ -3906,8 +4156,8 @@ const ReportAnalytics = () => {
                             label: "Status",
                             render: (value) => (
                               <StatusBadge
-                                status={(value ? "active" : "inactive")}
-                                text={(value ? "Active" : "Inactive")}
+                                status={value ? "active" : "inactive"}
+                                text={value ? "Active" : "Inactive"}
                               />
                             ),
                           },
@@ -3919,12 +4169,22 @@ const ReportAnalytics = () => {
                       />
                     </Grid>
                   </Grid>
-                  )
                 )}
               </Box>
             </TabPanel>
           </Paper>
         </Box>
+
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={handleCloseSnackbar}
+          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        >
+          <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: "100%" }}>
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </MainContentWrapper>
     </ThemeProvider>
   )
